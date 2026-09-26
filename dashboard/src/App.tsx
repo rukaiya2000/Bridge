@@ -1,21 +1,41 @@
-import { useEffect, useState } from "react";
-import type { Week } from "./types";
+import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { API_URL, fetchLatestWeek, type Week } from "./api";
 import { SAMPLE_WEEK, STARTERS } from "./sample";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const CHILD_ID = "demo";
+const REFRESH_MS = 15_000;
 const LATE = (h: number) => h >= 23 || h < 5;
 
 export function App() {
-  const [week, setWeek] = useState<Week>(SAMPLE_WEEK);
-  const [isSample, setIsSample] = useState(true);
+  const q = useQuery({ queryKey: ["latest-week", CHILD_ID], queryFn: () => fetchLatestWeek(CHILD_ID), refetchInterval: REFRESH_MS });
 
-  useEffect(() => {
-    fetch(`${API}/children/demo/weeks/2026-09-01`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((w: Week) => { setWeek(w); setIsSample(false); })
-      .catch(() => {});
-  }, []);
+  if (q.isPending) return <main><h1>Bridge</h1><p className="muted">Loading…</p></main>;
+  if (q.isError) {
+    return (
+      <WeekView week={SAMPLE_WEEK} status={
+        <p className="status offline">
+          Can't reach the API at {API_URL}, showing sample data. Start it with{" "}
+          <code>uv run --group api uvicorn api.main:app --reload</code>
+        </p>
+      } />
+    );
+  }
+  if (!q.data) {
+    return (
+      <main>
+        <h1>Bridge</h1>
+        <p className="status">
+          Connected to the API, but nothing has been synced for this child yet. Load the demo week with{" "}
+          <code>curl -X POST {API_URL}/sync -H 'content-type: application/json' --data @api/fixtures/sample_week.json</code>
+        </p>
+      </main>
+    );
+  }
+  return <WeekView week={q.data} status={<p className="status live">Live · updated {new Date(q.dataUpdatedAt).toLocaleTimeString()}</p>} />;
+}
 
+function WeekView({ week, status }: { week: Week; status: ReactNode }) {
   const byTopic = new Map<string, { total: number; late: number }>();
   for (const t of week.hourly_topics) {
     const cur = byTopic.get(t.topic) ?? { total: 0, late: 0 };
@@ -33,7 +53,8 @@ export function App() {
     <main>
       <header>
         <h1>Bridge</h1>
-        <p className="muted">Topics, not words. Week of {week.week_start}{isSample && " · sample data"}</p>
+        <p className="muted">Topics, not words. Week of {week.week_start}</p>
+        {status}
       </header>
 
       <section className="card">

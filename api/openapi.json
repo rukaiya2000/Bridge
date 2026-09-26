@@ -1,0 +1,373 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bridge sync API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync": {
+      "post": {
+        "summary": "Sync",
+        "operationId": "sync_sync_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Sync Sync Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{child_id}/weeks": {
+      "get": {
+        "summary": "Weeks",
+        "description": "Week starts with data, newest first.",
+        "operationId": "weeks_children__child_id__weeks_get",
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Weeks Children  Child Id  Weeks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{child_id}/weeks/{week_start}": {
+      "get": {
+        "summary": "Week",
+        "operationId": "week_children__child_id__weeks__week_start__get",
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Id"
+            }
+          },
+          {
+            "name": "week_start",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Week Start"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HourlyTopicCount": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Date"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "loneliness",
+              "sadness",
+              "stress",
+              "anxiety",
+              "anger",
+              "self_worth",
+              "school",
+              "friends",
+              "family",
+              "romance",
+              "body_image",
+              "boredom",
+              "other"
+            ],
+            "title": "Topic"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "hour",
+          "topic",
+          "count"
+        ],
+        "title": "HourlyTopicCount"
+      },
+      "SiteAggregate": {
+        "properties": {
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "watch",
+              "concerning",
+              "crisis"
+            ],
+            "title": "Level"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "active_minutes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Active Minutes"
+          },
+          "late_night_sessions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Late Night Sessions"
+          },
+          "voice_minutes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Voice Minutes",
+            "default": 0
+          },
+          "nudges_shown": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Nudges Shown"
+          },
+          "paid_tier": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid Tier"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site",
+          "level",
+          "score",
+          "active_minutes",
+          "late_night_sessions",
+          "nudges_shown"
+        ],
+        "title": "SiteAggregate"
+      },
+      "SyncPayload": {
+        "properties": {
+          "child_id": {
+            "type": "string",
+            "title": "Child Id"
+          },
+          "week_start": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "title": "Week Start"
+          },
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/SiteAggregate"
+            },
+            "type": "array",
+            "title": "Sites"
+          },
+          "hourly_topics": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyTopicCount"
+            },
+            "type": "array",
+            "title": "Hourly Topics"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "child_id",
+          "week_start",
+          "sites",
+          "hourly_topics"
+        ],
+        "title": "SyncPayload"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

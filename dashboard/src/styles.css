@@ -19,3 +19,7 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid rgba(128,128,128,.2); }
 .chip { padding: 2px 8px; border-radius: 10px; color: #fff; font-size: 12px; font-weight: 600; }
 .healthy { background: #2f855a; } .watch { background: #b7791f; } .concerning { background: #c05621; } .crisis { background: #6b46c1; }
+.status { font-size: 13px; padding: 6px 10px; border-radius: 8px; margin: 8px 0 0; background: rgba(128,128,128,.12); }
+.status.live { background: rgba(47,133,90,.15); }
+.status.offline { background: rgba(192,86,33,.15); }
+.status code { font-size: 12px; word-break: break-all; }

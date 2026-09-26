@@ -26,7 +26,7 @@ We share topics, not words. Sensitive topics are excluded from the parent view, 
 | `extension/` | Chrome MV3 extension | Person1 |
 | `eval/` | Python: dataset, baselines, metrics | Person2 |
 | `api/` | FastAPI sync service (Phase 2 skeleton) | TBD |
-| `dashboard/` | React parent dashboard (Phase 2 skeleton) | TBD |
+| `dashboard/` | React parent dashboard, reads the sync API | TBD |
 
 ## Running locally
 
@@ -65,19 +65,23 @@ uv run python -m eval.generate --conversations 160 --arcs 25
 uv run python -m eval.run --split tuning
 ```
 
-**API + dashboard (Phase 2 skeletons)**
+**API + dashboard**
 ```bash
-uv run --group api uvicorn api.main:app --reload
+uv run --group api uvicorn api.main:app --reload     # http://localhost:8000 (docs at /docs)
+npm run dev -w dashboard                             # http://localhost:5173, or the next free port
 ```
+The API keeps data in memory (MongoDB comes in Phase 2), so it starts empty after every restart. Load the demo week:
 ```bash
-npm run dev -w dashboard
+curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/sample_week.json
 ```
-The dashboard shows sample data until the API has a synced week.
+The dashboard shows the latest synced week and refreshes every 15 s. If the API is down it shows the sample week with a warning. Point it elsewhere with `VITE_API_URL`.
+
+After changing `api/models.py` or the routes, regenerate the dashboard's types: `npm run gen:api -w dashboard`.
 
 ## Team workflow
 
 - Plan and phases: [`docs/PHASES.md`](docs/PHASES.md). Phase 1 detailed spec: [`docs/PHASE1.md`](docs/PHASE1.md). Full spec: [`docs/desc.md`](docs/desc.md).
-- Phase 1 branches: `p1/extension` (Person1) and `p2/core-eval` (Person2); see `docs/PHASE1.md` §0 for merge rules.
+- Everyone works on `dev` (the `p1/extension` branch was merged and deleted).
 - `core/src/types.ts` is the shared contract. Agree on any change to it before merging.
 - Never commit API keys. Keep them in `.env` (git-ignored) or the extension options page.
 
