@@ -1,6 +1,6 @@
 // "Wait, this looks personal" card. Shows the kinds of information found, never the values.
 import { el } from "./shadow";
-import { FINDING_LABEL, type Finding } from "../privacy/detect";
+import { ALWAYS_BLOCKED, FINDING_LABEL, type Finding } from "../privacy/detect";
 
 export interface PauseChoice { proceed: boolean }
 
@@ -21,6 +21,9 @@ export function showPrivacyPause(
     card.append(list);
     card.append(el("div", "why", "Chatbots can store what you send, and people at the company may see it. " +
       "Once it's shared, you can't take it back. Your parent will see that this was paused, not what it was."));
+    if (opts.findings.some((f) => ALWAYS_BLOCKED.includes(f))) {
+      card.append(el("div", "why", "Card numbers, Social Security numbers and bank details can never be sent to a chatbot."));
+    }
 
     const actions = el("div", "actions");
     const done = (proceed: boolean) => { card.remove(); resolve({ proceed }); };

@@ -2,7 +2,7 @@
 didn't define, so message text can't slip in by accident."""
 
 from datetime import date, timedelta
-from typing import Literal
+from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
@@ -26,7 +26,7 @@ class HourlyTopicCount(Strict):
     date: date
     hour: int = Field(ge=0, le=23)
     topic: Topic
-    count: int = Field(ge=0)
+    count: int = Field(ge=0, le=1000)  # one teen can't mention a topic 1000+ times in one hour
 
 
 # Kinds of personal info the extension's privacy guard catches (extension/src/privacy/detect.ts).
@@ -40,7 +40,7 @@ class VoiceSession(Strict):
     date: date
     hour: int = Field(ge=0, le=23)  # local hour the mic turned on
     site: Site
-    minutes: int = Field(ge=0)
+    minutes: int = Field(ge=0, le=24 * 60)
 
 
 class PrivacyFlag(Strict):
@@ -49,7 +49,7 @@ class PrivacyFlag(Strict):
     hour: int = Field(ge=0, le=23)
     site: Site
     what: Literal["message", "file"]
-    findings: list[Finding] = Field(min_length=1)
+    findings: list[Finding] = Field(min_length=1, max_length=len(get_args(Finding)))
     sent: bool  # True: the teen chose "send anyway"; False: held back
 
 
@@ -67,15 +67,25 @@ class SiteAggregate(Strict):
 
 class SyncPayload(Strict):
     """One device's week. Several devices (browsers) can report for the same child_id."""
-    child_id: str
+    child_id: str = Field(min_length=1, max_length=64)
     # Random per browser install. Older extensions don't send it; they count as one "legacy" device.
     device_id: str = Field(default="legacy", min_length=1, max_length=64)
     week_start: date
-    sites: list[SiteAggregate]
-    hourly_topics: list[HourlyTopicCount]
+    # Caps keep one oversized sync from filling the database or stalling the API. A real week has at
+    # most one row per site, one per day x hour x topic, and one voice session per site per hour.
+    sites: list[SiteAggregate] = Field(max_length=len(get_args(Site)))
+    hourly_topics: list[HourlyTopicCount] = Field(max_length=7 * 24 * len(get_args(Topic)))
     # Older extensions don't send these.
-    voice_sessions: list[VoiceSession] = []
-    privacy_flags: list[PrivacyFlag] = []
+    voice_sessions: list[VoiceSession] = Field(default_factory=list, max_length=7 * 24 * len(get_args(Site)))
+    privacy_flags: list[PrivacyFlag] = Field(default_factory=list, max_length=1000)
+
+    @model_validator(mode="after")
+    def no_duplicate_rows(self) -> "SyncPayload":
+        if len({s.site for s in self.sites}) != len(self.sites):
+            raise ValueError("each site may appear only once")
+        if len({(t.date, t.hour, t.topic) for t in self.hourly_topics}) != len(self.hourly_topics):
+            raise ValueError("each date, hour and topic may appear only once")
+        return self
 
     @model_validator(mode="after")
     def dates_inside_week(self) -> "SyncPayload":

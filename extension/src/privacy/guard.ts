@@ -1,7 +1,7 @@
 // Pauses a message or upload that contains personal information before the chatbot receives it.
 // Listeners run in the capture phase on window, so they see Enter, send clicks, file picks, drops
 // and pastes before the page's own handlers. Detection is synchronous, so clean messages are never delayed.
-import { findInText, type Finding } from "./detect";
+import { ALWAYS_BLOCKED, findInText, type Finding } from "./detect";
 import { checkFile } from "./files";
 import { showPhotoReminder, showPrivacyPause } from "../ui/privacy";
 
@@ -12,40 +12,70 @@ export interface GuardOptions {
   report: (what: "message" | "file", findings: Finding[], proceeded: boolean) => void;
 }
 
+const EDITABLE = '[contenteditable="true"], [contenteditable=""], textarea';
+
+// Cards, SSNs and bank numbers never get a "send anyway", whatever the strict setting.
+const mustBlock = async (findings: Finding[], isStrict: () => Promise<boolean>) =>
+  findings.some((f) => ALWAYS_BLOCKED.includes(f)) || (await isStrict());
+
 export function startPrivacyGuard(opts: GuardOptions): void {
   const { root, selectors } = opts;
-  const composer = () => document.querySelector<HTMLElement>(selectors.composer);
-  const composerText = () => composer()?.innerText.trim() ?? "";
+
+  // The message box is whatever the teen is actually typing in (from the events themselves), so the
+  // guard keeps working when the site renames its classes. selectors.composer is only a fallback.
+  let lastBox: HTMLElement | null = null;
+  let announced = false;
+  const boxOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>(EDITABLE) : null);
+  const currentBox = () => (lastBox?.isConnected ? lastBox : document.querySelector<HTMLElement>(selectors.composer));
+  const textOf = (box: HTMLElement | null) =>
+    (box instanceof HTMLTextAreaElement ? box.value : box?.innerText ?? box?.textContent ?? "").trim();
+  const remember = (e: Event) => {
+    const box = boxOf(e.target);
+    if (!box) return;
+    lastBox = box;
+    if (!announced) {
+      announced = true;
+      console.info(`[Bridge] privacy guard is watching the message box <${box.tagName.toLowerCase()}${box.className ? "." + [...box.classList].join(".") : ""}>`);
+    }
+  };
+  for (const type of ["focusin", "input", "keydown"]) addEventListener(type, remember, true);
+  console.info("[Bridge] privacy guard active");
 
   // ---- typed messages ----
-  let allowNextSend = false;
+  // "Send anyway" approves only the exact text the teen saw on the card. Any edit afterwards is
+  // checked again, so the approval can't be reused for a card number typed in its place.
+  let approvedText: string | null = null;
 
-  async function pauseSend(findings: Finding[]) {
-    const strict = await opts.isStrict();
+  async function pauseSend(box: HTMLElement | null, findings: Finding[]) {
+    const strict = await mustBlock(findings, opts.isStrict);
     const { proceed } = await showPrivacyPause(root, { what: "message", findings, strict });
     opts.report("message", findings, proceed);
-    if (!proceed) return composer()?.focus();
-    allowNextSend = true;
+    if (!proceed) return box?.focus();
+    // If the send button isn't found, the teen's next Enter or click sends it, as long as the text is unchanged.
+    approvedText = textOf(box);
     document.querySelector<HTMLElement>(selectors.sendButton)?.click();
   }
 
-  function interceptSend(e: Event) {
-    if (allowNextSend) { allowNextSend = false; return; }
-    const findings = findInText(composerText());
+  function interceptSend(e: Event, box: HTMLElement | null) {
+    const text = textOf(box);
+    if (approvedText !== null && text === approvedText) { approvedText = null; return; }
+    approvedText = null;
+    const findings = findInText(text);
     if (!findings.length) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    void pauseSend(findings);
+    console.info(`[Bridge] privacy guard held a message with [${findings}]`);
+    void pauseSend(box, findings);
   }
 
   addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
-    if (!(e.target instanceof Node) || !composer()?.contains(e.target)) return;
-    interceptSend(e);
+    const box = boxOf(e.target);
+    if (box) interceptSend(e, box);
   }, true);
 
   addEventListener("click", (e) => {
-    if (e.target instanceof Element && e.target.closest(selectors.sendButton)) interceptSend(e);
+    if (e.target instanceof Element && e.target.closest(selectors.sendButton)) interceptSend(e, currentBox());
   }, true);
 
   // ---- uploads: file picker, drag-and-drop, paste ----
@@ -59,8 +89,8 @@ export function startPrivacyGuard(opts: GuardOptions): void {
       if (checks.some((c) => c.photo)) showPhotoReminder(root);
       return true;
     }
-    const strict = await opts.isStrict();
     for (const c of flagged) {
+      const strict = await mustBlock(c.findings, opts.isStrict);
       const { proceed } = await showPrivacyPause(root, { what: "file", findings: c.findings, fileName: c.name, strict });
       opts.report("file", c.findings, proceed);
       if (!proceed) return false;

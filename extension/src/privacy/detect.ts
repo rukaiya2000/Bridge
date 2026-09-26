@@ -1,6 +1,7 @@
 // Finds and removes personal information in text. Runs only on the device: nothing here makes a
 // network call (neither library gets an API key, so neither phones home). File checks are in files.ts.
 import { Redactor } from "@redactpii/node";
+import cardValidator from "card-validator";
 
 export type Finding =
   | "phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document";
@@ -35,13 +36,18 @@ const CITY_STATE_ZIP =
   "(?:,?\\s+[a-z]+(?:\\s[a-z]+){0,2},?\\s+[a-z]{2}\\s+\\d{5}(?:-\\d{4})?\\b|,\\s*[a-z]+(?:\\s[a-z]+){0,2},\\s*[a-z]{2}\\b)?";
 // Number rules need a keyword in front ("ssn", "routing", "passport") so math and scores stay untouched,
 // and ID values need at least one digit so "my license is expired" isn't flagged.
+const DIGIT_WORD = "(?:zero|oh|one|two|three|four|five|six|seven|eight|nine)";
+const CVV_DIGITS = `(?:\\d{3,4}|${DIGIT_WORD}(?:[\\s-]+${DIGIT_WORD}){2,3})\\b`;
 const PHRASES: [Finding, RegExp][] = [
   ["address", new RegExp(`\\b\\d{2,6}\\s+(?:${NOT_A_STREET_WORD}[a-z0-9]+\\s+){1,4}(?:${STREET_TYPES})\\b${UNIT}${CITY_STATE_ZIP}`, "i")],
   ["address", /\bp\.?\s*o\.?\s*box\s+\d+/i],
   ["address", /\b(zip|zip code|postal code)\s*(is|:)?\s*\d{5}(-\d{4})?\b/i],
   ["ssn", /\b(ssn|social security|social)\s*(number|no\.?|#)?\s*(is|:|#)?\s*\d{3}\s?\d{2}\s?\d{4}\b/i], // no dashes; redactpii handles dashed
-  ["card", /\b(cvv2?|cvc|security code)\s*(is|:|#)?\s*\d{3,4}\b/i],
-  ["card", /\b(exp|expiry|expires|expiration)(\s+date)?\s*(is|:)?\s*\d{1,2}\s*\/\s*\d{2,4}\b/i],
+  // Security code: the usual names (CVV, CVC, CSC, CID on Amex, "sec code") or "the digits on the back",
+  // followed by 3-4 digits, also spelled out ("one two three").
+  ["card", new RegExp(`\\b(?:(?:cvv|cvc|cvn|cav)2?|csc|cid|sec(?:urity)?\\s*code|card\\s+verification(?:\\s+(?:code|value|number))?|(?:code|digits|numbers?)\\s+on\\s+the\\s+back(?:\\s+of\\s+(?:the|my)\\s+card)?)\\s*(?:is|are|:|#|=)?\\s*${CVV_DIGITS}`, "i")],
+  // Expiry: "exp 04/28", "expiry 04-28", "valid thru 04/28", "good through 4/2028".
+  ["card", /\b(exp|expiry|expires|expiration|valid\s+(thru|through|until)|good\s+(thru|through))(\s+date)?\s*(is|:)?\s*\d{1,2}\s*[/-]\s*\d{2,4}\b/i],
   ["bank", /\b(routing|account|acct|iban|bank account)\s*(number|no\.?|#)?\s*(is|:|#)?\s*[a-z]{0,2}\d[\d\s-]{5,30}\d\b/i],
   ["id_document", /\b(passport|driver'?s? licen[cs]e|licen[cs]e|dl|state id)\s*(number|no\.?|#)?\s*(is|:|#)?\s*(?=[a-z]*\d)[a-z0-9-]{6,15}\b/i],
   ["password", /\b(password|passcode|pin)\b(\s+\w+){0,5}?\s*(is|:|=)\s*\S{3,}/i], // "password for X is ..."
@@ -51,9 +57,37 @@ const PHRASES: [Finding, RegExp][] = [
 
 const unique = (xs: Finding[]) => [...new Set(xs)];
 
+// Never allowed through, even if the teen chooses "send anyway": money and identity theft risks.
+export const ALWAYS_BLOCKED: readonly Finding[] = ["card", "ssn", "bank"];
+
+// Undo tricks that hide numbers from pattern matching, before any rule runs:
+//   fullwidth digits "４１１１" (NFKC), zero-width and soft-hyphen characters, odd spaces (non-breaking,
+//   thin, ideographic), and card numbers broken up by dots, slashes, underscores, line breaks or single
+//   spaces, or with O/l/I typed for 0/1. A broken-up number is only joined back together when
+//   card-validator (Braintree) says the result is a real card number, so ordinary numbers stay apart.
+const INVISIBLE = /[\u00ad\u200b-\u200d\u2060\ufeff]/g;
+const ODD_SPACE = /[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g;
+const LOOKALIKE: Record<string, string> = { O: "0", o: "0", l: "1", I: "1" };
+const CARDLIKE_RUN = /[0-9OolI](?:[\s._/\\-]*[0-9OolI]){12,22}/g;
+
+function joinCardRuns(text: string): string {
+  return text.replace(CARDLIKE_RUN, (run) => {
+    const chars = run.replace(/[\s._/\\-]/g, "");
+    if ((chars.match(/\d/g) ?? []).length < 10) return run; // mostly letters: a word, not a number
+    const digits = chars.replace(/[OolI]/g, (c) => LOOKALIKE[c]);
+    return digits.length >= 12 && digits.length <= 19 && cardValidator.number(digits).isValid ? digits : run;
+  });
+}
+
+const normalize = (text: string) =>
+  joinCardRuns(text.normalize("NFKC").replace(INVISIBLE, "").replace(ODD_SPACE, " "))
+    // "536.22.1234": dotted SSN-shaped numbers read like dashed ones
+    .replace(/\b(\d{3})\.(\d{2})\.(\d{4})\b/g, "$1-$2-$3");
+
 // Fast enough (well under a millisecond) to run synchronously on every send.
 export function findInText(text: string): Finding[] {
   if (!text.trim()) return [];
+  text = normalize(text);
   const redacted = redactor.redact(text);
   const found: Finding[] = PLACEHOLDERS.filter(([p]) => redacted.includes(p)).map(([, f]) => f);
   for (const [f, re] of PHRASES) if (re.test(text)) found.push(f);
@@ -65,7 +99,7 @@ export function findInText(text: string): Finding[] {
 // Copy of `text` with personal details replaced by placeholders ("my number is PHONE_NUMBER"). Used
 // before a message is sent anywhere for labeling, so Bridge itself never forwards those details.
 export function redactPersonal(text: string): string {
-  let out = redactor.redact(text);
+  let out = redactor.redact(normalize(text));
   for (const [f, re] of PHRASES) out = out.replace(new RegExp(re.source, "gi"), f.toUpperCase());
   return out;
 }

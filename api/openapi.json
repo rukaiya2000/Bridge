@@ -506,6 +506,7 @@
           },
           "count": {
             "type": "integer",
+            "maximum": 1000.0,
             "minimum": 0.0,
             "title": "Count"
           }
@@ -601,6 +602,7 @@
               ]
             },
             "type": "array",
+            "maxItems": 10,
             "minItems": 1,
             "title": "Findings"
           },
@@ -756,6 +758,8 @@
         "properties": {
           "child_id": {
             "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
             "title": "Child Id"
           },
           "device_id": {
@@ -775,6 +779,7 @@
               "$ref": "#/components/schemas/SiteAggregate"
             },
             "type": "array",
+            "maxItems": 4,
             "title": "Sites"
           },
           "hourly_topics": {
@@ -782,6 +787,7 @@
               "$ref": "#/components/schemas/HourlyTopicCount"
             },
             "type": "array",
+            "maxItems": 3864,
             "title": "Hourly Topics"
           },
           "voice_sessions": {
@@ -789,16 +795,16 @@
               "$ref": "#/components/schemas/VoiceSession"
             },
             "type": "array",
-            "title": "Voice Sessions",
-            "default": []
+            "maxItems": 672,
+            "title": "Voice Sessions"
           },
           "privacy_flags": {
             "items": {
               "$ref": "#/components/schemas/PrivacyFlag"
             },
             "type": "array",
-            "title": "Privacy Flags",
-            "default": []
+            "maxItems": 1000,
+            "title": "Privacy Flags"
           }
         },
         "additionalProperties": false,
@@ -987,6 +993,7 @@
           },
           "minutes": {
             "type": "integer",
+            "maximum": 1440.0,
             "minimum": 0.0,
             "title": "Minutes"
           }

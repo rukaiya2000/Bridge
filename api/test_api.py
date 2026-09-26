@@ -235,3 +235,21 @@ def test_extension_gets_its_own_session_from_the_dashboards(client):
     client.post("/auth/logout")  # dashboard logs out
     assert client.get("/auth/me", headers={"authorization": dashboard}).status_code == 401
     assert client.get("/auth/me", headers=extension).status_code == 200  # extension still logged in
+
+
+def test_oversized_or_duplicated_syncs_are_rejected(client):
+    row = {"date": "2026-09-03", "hour": 1, "topic": "school", "count": 1}
+    too_many = {**PAYLOAD, "hourly_topics": [{**row, "hour": h % 24, "date": f"2026-09-0{1 + h // 24 % 7}"} for h in range(3000)]}
+    assert client.post("/sync", json=too_many).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "hourly_topics": [row, row]}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "sites": PAYLOAD["sites"] * 2}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "hourly_topics": [{**row, "count": 1_000_000}]}).status_code == 422
+
+
+def test_voice_sessions_and_privacy_flags_are_capped(client):
+    voice = {"date": "2026-09-03", "hour": 1, "site": "gemini", "minutes": 5}
+    flag = {"date": "2026-09-03", "hour": 1, "site": "gemini", "what": "message", "findings": ["card"], "sent": False}
+    assert client.post("/sync", json={**PAYLOAD, "voice_sessions": [voice] * 1000}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [flag] * 1001}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "voice_sessions": [{**voice, "minutes": 100_000}]}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "voice_sessions": [voice], "privacy_flags": [flag]}).status_code == 200
