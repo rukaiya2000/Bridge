@@ -1,0 +1,22 @@
+{
+  "id": "sample_arc",
+  "site": "gemini",
+  "sessions": [
+    {
+      "start": 1788220800000,
+      "end": 1788222600000,
+      "turns": [
+        { "ts": 1788220900000, "labels": { "topics": ["school"], "dependency": false, "isolation": false, "botHook": false, "crisis": false, "abuseAtHome": false, "excludedTopics": [], "source": "rules" } },
+        { "ts": 1788221500000, "labels": { "topics": ["stress"], "dependency": false, "isolation": false, "botHook": false, "crisis": false, "abuseAtHome": false, "excludedTopics": [], "source": "rules" } }
+      ]
+    },
+    {
+      "start": 1788390000000,
+      "end": 1788394000000,
+      "turns": [
+        { "ts": 1788390500000, "labels": { "topics": ["loneliness"], "dependency": true, "isolation": false, "botHook": false, "crisis": false, "abuseAtHome": false, "excludedTopics": [], "source": "rules+gemini" } },
+        { "ts": 1788392000000, "labels": { "topics": ["loneliness", "friends"], "dependency": true, "isolation": true, "botHook": true, "crisis": false, "abuseAtHome": false, "excludedTopics": [], "source": "rules+gemini" } }
+      ]
+    }
+  ]
+}

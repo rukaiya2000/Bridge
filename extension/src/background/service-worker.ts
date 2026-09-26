@@ -1,0 +1,173 @@
+import { core } from "@bridge/core";
+import type { Level, Site, Turn } from "../../../core/src/types";
+import type { ToContent, ToOffscreen, ToWorker } from "../messages";
+import * as store from "../storage";
+import { dayKey, isLateNight } from "../time";
+
+const PENDING_MS = 60_000;
+const SESSION_IDLE_MS = 10 * 60_000;
+const LATE_NIGHT_MIN_MS = 60 * 60_000;
+const NUDGES_PER_DAY = 3;
+const NUDGE_VARIANTS = 5;
+const RANK: Record<Level, number> = { healthy: 0, watch: 1, concerning: 2, crisis: 3 };
+
+// Text lives only here, in memory, until the turn is labeled.
+const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boolean; timer: ReturnType<typeof setTimeout> }>();
+
+chrome.runtime.onInstalled.addListener(() => chrome.alarms.create("sessions", { periodInMinutes: 1 }));
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === "sessions") void closeIdleSessions(Date.now()); });
+
+chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
+  const tabId = sender.tab?.id;
+  if (msg.type === "turn") void onTurn(msg.turn, tabId);
+  if (msg.type === "heartbeat") void onHeartbeat(msg.site, msg.ts, msg.interacting, tabId);
+  if (msg.type === "voice") void onVoice(msg.site, msg.active, msg.ts);
+  return false;
+});
+
+function send(tabId: number | undefined, msg: ToContent) {
+  if (tabId !== undefined) chrome.tabs.sendMessage(tabId, msg).catch(() => {});
+}
+
+// ---- turns ----
+
+async function onTurn(turn: Turn, tabId?: number) {
+  if (turn.role === "user") {
+    const quick = core.rulesLabel(turn, null);
+    if (quick.crisis) await showCrisis(turn.site, tabId, quick.abuseAtHome);
+    const prev = pending.get(turn.conversationId);
+    if (prev) { clearTimeout(prev.timer); void processTurn(prev.user, null, prev.tabId, prev.crisisShown); }
+    const timer = setTimeout(() => {
+      const p = pending.get(turn.conversationId);
+      pending.delete(turn.conversationId);
+      if (p) void processTurn(p.user, null, p.tabId, p.crisisShown);
+    }, PENDING_MS);
+    pending.set(turn.conversationId, { user: turn, tabId, crisisShown: quick.crisis, timer });
+    return;
+  }
+  const p = pending.get(turn.conversationId);
+  if (!p) return;
+  clearTimeout(p.timer);
+  pending.delete(turn.conversationId);
+  await processTurn(p.user, turn, p.tabId, p.crisisShown);
+}
+
+async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefined, crisisShown: boolean) {
+  const settings = await store.get("settings");
+  const labels = await core.labelTurn(user, bot, { geminiKey: settings.geminiKey || undefined, model: settings.model });
+  if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
+
+  const site = user.site;
+  const profiles = await store.get("profiles");
+  profiles[site] = core.updateProfile(profiles[site] ?? core.emptyProfile(site), labels, user.ts);
+  const result = core.scoreProfile(profiles[site]!, Date.now(), Object.values(profiles));
+  const state = await store.get("state");
+  const previous = state[site]?.level ?? "healthy";
+  state[site] = { ...result, updatedAt: Date.now() };
+  await store.set("profiles", profiles);
+  await store.set("state", state);
+
+  const debug = await store.get("debug");
+  debug.recentLabels = [{ ts: user.ts, site, labels }, ...debug.recentLabels].slice(0, 20);
+  await store.set("debug", debug);
+
+  if (RANK[result.level] > RANK[previous] && (result.level === "watch" || result.level === "concerning")) {
+    await maybeNudge(site, tabId, result.level);
+  }
+}
+
+// ---- sessions ----
+
+async function onHeartbeat(site: Site, ts: number, interacting: boolean, tabId?: number) {
+  await closeIdleSessions(ts);
+  if (!interacting) return;
+  const sessions = await store.get("sessions");
+  const cur = sessions.current[site] ?? { start: ts, lastBeat: ts };
+  cur.lastBeat = ts;
+  sessions.current[site] = cur;
+  await store.set("sessions", sessions);
+
+  if (isLateNight(cur.start) && ts - cur.start >= LATE_NIGHT_MIN_MS) {
+    const level = (await store.get("state"))[site]?.level ?? "healthy";
+    await maybeNudge(site, tabId, level);
+  }
+}
+
+async function closeIdleSessions(now: number) {
+  const sessions = await store.get("sessions");
+  const closed = (Object.keys(sessions.current) as Site[]).filter((s) => now - sessions.current[s]!.lastBeat > SESSION_IDLE_MS);
+  if (!closed.length) return;
+  const profiles = await store.get("profiles");
+  const state = await store.get("state");
+  for (const site of closed) {
+    const { start, lastBeat } = sessions.current[site]!;
+    delete sessions.current[site];
+    profiles[site] = core.recordSession(profiles[site] ?? core.emptyProfile(site), { site, start, end: lastBeat, paidTier: null });
+    await onVoice(site, false, lastBeat);
+  }
+  for (const site of closed) {
+    state[site] = { ...core.scoreProfile(profiles[site]!, now, Object.values(profiles)), updatedAt: now };
+  }
+  await store.set("sessions", sessions);
+  await store.set("profiles", profiles);
+  await store.set("state", state);
+}
+
+// ---- nudges and crisis ----
+
+async function maybeNudge(site: Site, tabId: number | undefined, level: Level) {
+  const settings = await store.get("settings");
+  if (!settings.nudgesEnabled || level === "crisis") return;
+  const sessionStart = (await store.get("sessions")).current[site]?.start;
+  const nudges = await store.get("nudges");
+  const today = dayKey(Date.now());
+  if (nudges.date !== today) Object.assign(nudges, { date: today, countToday: 0, nudgedSessionStarts: [] });
+  if (sessionStart !== undefined && nudges.nudgedSessionStarts.includes(sessionStart)) return;
+  if (nudges.countToday >= NUDGES_PER_DAY) return;
+
+  const variant = nudges.countToday % NUDGE_VARIANTS;
+  nudges.countToday += 1;
+  if (sessionStart !== undefined) nudges.nudgedSessionStarts.push(sessionStart);
+  await store.set("nudges", nudges);
+  send(tabId, { type: "show-nudge", variant });
+  await speakIfVoice(site, `audio/nudge-${variant}.mp3`);
+}
+
+async function showCrisis(site: Site, tabId: number | undefined, abuseAtHome: boolean) {
+  send(tabId, { type: "show-crisis", abuseAtHome });
+  await speakIfVoice(site, abuseAtHome ? "audio/crisis-abuse.mp3" : "audio/crisis.mp3");
+}
+
+// ---- voice mode (feature 8) ----
+
+async function onVoice(site: Site, active: boolean, ts: number) {
+  const voice = await store.get("voice");
+  const cur = voice.current[site];
+  if (active) {
+    if (!cur) voice.current[site] = { start: ts };
+  } else if (cur) {
+    delete voice.current[site];
+    const day = (voice.minutesByDay[dayKey(cur.start)] ??= {});
+    day[site] = (day[site] ?? 0) + Math.round((ts - cur.start) / 60000);
+    // TODO(phase 2): feed voice minutes into core via SessionEvent once the contract change is agreed.
+  }
+  await store.set("voice", voice);
+}
+
+async function speakIfVoice(site: Site, file: string) {
+  const [settings, voice] = await Promise.all([store.get("settings"), store.get("voice")]);
+  if (!settings.spokenNudges || !voice.current[site]) return;
+  await ensureOffscreen();
+  const msg: ToOffscreen = { type: "play-audio", file };
+  chrome.runtime.sendMessage(msg).catch(() => {});
+}
+
+async function ensureOffscreen() {
+  const contexts = await chrome.runtime.getContexts({ contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT] });
+  if (contexts.length) return;
+  await chrome.offscreen.createDocument({
+    url: "offscreen.html",
+    reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
+    justification: "Speak Bridge nudges and crisis resources while the teen is in a chatbot's voice mode.",
+  });
+}

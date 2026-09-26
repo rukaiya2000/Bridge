@@ -25,8 +25,8 @@ We share topics, not words. Sensitive topics are excluded from the parent view, 
 | `core/` | TypeScript library: labeler, rules, pattern engine | Person2 |
 | `extension/` | Chrome MV3 extension | Person1 |
 | `eval/` | Python: dataset, baselines, metrics | Person2 |
-| `api/` | FastAPI sync service (Phase 2) | TBD |
-| `dashboard/` | React parent dashboard (Phase 2) | TBD |
+| `api/` | FastAPI sync service (Phase 2 skeleton) | TBD |
+| `dashboard/` | React parent dashboard (Phase 2 skeleton) | TBD |
 
 ## Running locally
 
@@ -34,27 +34,45 @@ We share topics, not words. Sensitive topics are excluded from the parent view, 
 
 **Prerequisites:** Node 20+, Python 3.13 with [uv](https://docs.astral.sh/uv/), Chrome, a Gemini API key. Docker is needed from Phase 2.
 
-**Extension**
+Copy `.env.example` to `.env` and fill in your keys. Then, once, from the repo root:
+
 ```bash
-# TBD: build command
-# Then in Chrome: chrome://extensions → Developer mode → Load unpacked → extension/dist
-# Paste your Gemini key in the extension's options page
+npm install
 ```
 
-**Core**
+**Core** (detection library + CLI)
 ```bash
-# TBD: cd core && npm install && npm test
+npm run build -w core && npm test -w core
 ```
+
+**Extension**
+```bash
+npm run build -w extension
+```
+Then in Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/dist`. Paste your Gemini key on the extension's options page. The default build uses the core stub (type `#dep`, `#iso`, `#hook`, `#lonely`, `#crisis`, `#abuse` in Gemini to trigger labels). Use `npm run build:real -w extension` for the real core.
+
+**Spoken nudges** (feature 8, needs `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` in `.env`)
+```bash
+npm run voice -w extension
+```
+This writes the MP3s to `extension/static/audio/`. Rebuild the extension afterwards.
 
 **Eval**
 ```bash
-# TBD: uv run python -m eval.run --split tuning
+uv run python -m eval.generate --conversations 160 --arcs 25
+```
+```bash
+uv run python -m eval.run --split tuning
 ```
 
-**API + dashboard (Phase 2)**
+**API + dashboard (Phase 2 skeletons)**
 ```bash
-# TBD: docker compose up
+uv run --group api uvicorn api.main:app --reload
 ```
+```bash
+npm run dev -w dashboard
+```
+The dashboard shows sample data until the API has a synced week.
 
 ## Team workflow
 

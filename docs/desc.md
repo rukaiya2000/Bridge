@@ -35,7 +35,10 @@ Never
 Contradicts the privacy promise
 Parent conversation rehearsal (voice)
 Stretch
-Strong demo moment and a real parent need; build only after features 1 and 2 work end to end. The demo must work without it
+Strong demo moment and a real parent need; build only after features 1, 2 and 8 work end to end. The demo must work without it
+Voice mode awareness and spoken nudges
+Minimal
+Detects when the teen talks to a chatbot by voice (mic use only, no audio captured) and speaks the nudge or crisis handoff with pre-generated ElevenLabs audio. About 3 hours; the main ElevenLabs integration
 AI tool report card
 Minimal
 Covers Assurant's tool-selection area; about 2 hours using existing site detection
@@ -66,9 +69,9 @@ Build
 Stores relationship profiles: one document per child and chatbot with score history, level, signal counts, behavioral stats, nudges shown. Also hourly topic counts (aggregation pipeline powers the weekly trend chart), parent settings, starter templates, tool ratings and rehearsal feedback
 Relationship store, trend chart, parent dashboard
 MLH: ElevenLabs
-Build (stretch)
-Conversational AI agent that plays a simulated teen so parents can rehearse the conversation starter by voice. Only submit to this track if feature 5 ships
-Feature 5, demo step 4
+Build
+Text-to-speech generates the spoken nudges and crisis handoff played when the teen is in voice mode (feature 8). Stretch: a Conversational AI agent that plays a simulated teen so parents can rehearse the conversation starter (feature 5). Only submit to this track if feature 8 ships, and confirm TTS-only use qualifies
+Feature 8, demo step 3; feature 5, demo step 4
 MLH: DigitalOcean
 Build
 Hosts the FastAPI sync service and dashboard on App Platform using the $200 student credit
@@ -151,15 +154,35 @@ Weekly hours per AI tool and a flag when the teen is on a paid subscription tier
 Acceptance criteria:
 [ ] Hours per tool match session logs within 5 minutes per week
 [ ] Paid-tier flag works on at least one site
+8. Voice mode awareness and spoken nudges (minimal)
+Talking to a chatbot out loud is a stronger sign of attachment than typing, and a teen in voice mode is often not looking at the screen, so a text card goes unseen. Bridge notices voice mode and answers in the same mode.
+Detection (behavioral, no content):
+• A small script in the page's main world wraps navigator.mediaDevices.getUserMedia on recognized AI domains. When the page opens an audio stream, it records voice start; when the audio track ends, voice end. Bridge never reads, records or transcribes the audio
+• Works on all four sites by domain, with no per-site parser, so it covers Gemini Live, ChatGPT voice and similar modes
+• Voice minutes and late-night voice sessions become behavioral signals in the pattern engine, weighted in weights.json and tuned like the others
+• If a site already renders a transcript of the voice chat in the page, the normal site adapter reads it like typed text. Bridge adds no transcription of its own
+Spoken nudges:
+• The 3 to 5 nudge variants and the crisis handoff script are turned into MP3s once, at build time, with the ElevenLabs text-to-speech API, and bundled in the extension
+• ElevenLabs only ever sees our fixed scripts, never anything about the child
+• Bundled audio means the crisis handoff still plays offline
+• Played from an MV3 offscreen document (chrome.offscreen, reason AUDIO_PLAYBACK) when a nudge or crisis fires during an open voice session. The text card or crisis panel is always shown as well
+• Same rate limits as feature 3: at most one nudge per session, three per day
+• The spoken crisis message hands off to people (988 call or text, Crisis Text Line, and Childhelp when abuseAtHome). No AI voice agent ever talks with a teen in crisis
+Acceptance criteria:
+[ ] Voice sessions are detected on at least one site, with start and end within 10 seconds of the real ones
+[ ] No audio, transcript or text leaves the page or is stored because of this feature
+[ ] Spoken crisis handoff plays with the network off
+[ ] Nudge audio plays within 1 second of the trigger during a voice session
 Architecture and tech stack
 Crisis detection and behavioral signals run on the child's device. In the demo build, nuanced labeling calls Gemini with the message text and keeps only the labels. Only aggregates sync to the parent dashboard.
 flowchart LR
   A[Chat page DOM] --> B[Content script: extract turns]
+  V[Mic hook: voice start and end only] --> C1
   B --> C1[Local rules: crisis lexicon + behavioral signals]
   B --> C2[Labeler: Gemini in demo, on-device in production]
   C1 --> D[Pattern engine: 7-day profile + score]
   C2 --> D
-  D --> E[Nudge / crisis UI in page]
+  D --> E[Nudge / crisis UI in page, spoken in voice mode]
   D --> F[Aggregator: scores and counts only, exclusions and abuse masking applied]
   F --> G[Sync API on DigitalOcean]
   G --> M[(MongoDB: profiles + hourly counts)]
@@ -195,6 +218,12 @@ Runs the pattern engine, the per-message ablation and the keyword baseline on th
 Relationship store
 MongoDB Atlas
 One document per child and chatbot: level, score history, signal counts, behavioral stats, nudges shown. Separate collection for hourly topic counts. No message text
+Voice detection
+Main-world script wrapping getUserMedia on AI domains
+Emits voice start and end only; never touches the audio stream's content
+Spoken nudges
+ElevenLabs text-to-speech at build time; MP3s bundled; MV3 offscreen document for playback
+Fixed scripts only, works offline
 Rehearsal
 ElevenLabs Conversational AI + Gemini
 Agent persona built from topic label and level only; Gemini scores the transcript; audio discarded
@@ -212,6 +241,7 @@ Data handling:
 • Raw text stays on device except for the labeling call to Gemini in the demo build; it is never sent to our servers, never stored, and deleted after scoring
 • Synced data: topic label, count, hour bucket, date; pattern level and score per chatbot; behavioral stats (hours, late-night session count); nudge count; tools used and paid-tier flag. No message text, no quotes, no excluded topics
 • No age disclosure to the AI provider. Rehearsal audio is never stored
+• Voice mode: Bridge records only when the microphone was in use on an AI site. It never captures, stores or transcribes the teen's audio. ElevenLabs receives only our fixed nudge scripts, at build time
 Honest pitch wording: say "we share topics, not words" instead of "we don't share what your kid said." Topics are a partial disclosure, and judges will notice if you overclaim.
 Evaluation plan
 The headline slide is one table with three rows on the same labeled set: our 7-day pattern engine, the same classifier used message by message, and a keyword filter. The middle row is the one that proves the relationship claim; the keyword row only shows that a model beats a word list.
@@ -243,7 +273,7 @@ The demo is a side-by-side: the same 7-day conversation, keyword filter on the l
 Demo (3 minutes):
 1. Hook (20s). "A 14-year-old talks to an AI companion every night for a week. No single message is flagged. By day 7 she's told it she doesn't need her friends anymore. Filters saw nothing."
 2. Side-by-side replay (60s). Fast-forward a pre-recorded 7-day arc. Keyword filter stays green all week. Our score moves healthy, watch, concerning by day 4.
-3. Teen view (30s). The nudge card appears in the live Gemini page. Show one real, live message to prove it isn't faked.
+3. Teen view (30s). The nudge card appears in the live Gemini page. Show one real, live message to prove it isn't faked. If voice mode shipped, switch to voice and let the spoken nudge play: "Bridge notices when the relationship moves from typing to talking."
 4. Parent view (30s). Weekly card: topics, time-of-day chart, conversation starter. Point out: no quotes anywhere. If rehearsal shipped, click Practice and do 15 seconds of voice with the simulated teen; otherwise show the tool report card and time and spend view.
 5. Crisis panel (15s). Trigger it; show that the parent dashboard shows no crisis when abuse signals are present.
 6. Numbers (25s). The three-row comparison table from the held-out set. End on the one-liner.
@@ -267,6 +297,8 @@ Isn't the keyword baseline a strawman?
 Yes, which is why the middle row compares against our own classifier without the pattern engine.
 What about COPPA and consent?
 Installed and configured by the parent or school, disclosed to the teen at onboarding, no data about the child sent to AI providers beyond the labeling call, no message text stored.
+Are you listening to the kid's microphone?
+No. We only note that the mic was in use on an AI site, and for how long. The audio never passes through Bridge. The spoken nudges are pre-recorded.
 Why not just have AI companies fix this?
 They should. We work across every chatbot today and give parents something to act on.
 Build timeline and task split
@@ -290,7 +322,7 @@ Trend chart from MongoDB aggregation; conversation-starter templates; tool repor
 18 to 23
 Nudge card and crisis panel; exclusion rules and abuse masking in the aggregator
 Fix top 3 failures; run held-out once; freeze numbers
-Sync extension to dashboard end to end; ElevenLabs rehearsal agent (cut first if behind)
+Sync extension to dashboard end to end; voice detection and ElevenLabs spoken nudges; ElevenLabs rehearsal agent (cut first if behind)
 23 to 27
 Bug fixes; second site adapter only if time allows
 Confusion matrix and comparison table
@@ -308,7 +340,8 @@ Priority order if time runs short:
 1. Detection (feature 1), parent insights (feature 2) and the eval comparison with the per-message ablation. These win the main prizes
 2. Nudge and crisis panel (features 3 and 4), about 1 hour each, including abuse masking
 3. Tool report card and time and spend view (features 6 and 7), for the Assurant fit
-4. ElevenLabs rehearsal (feature 5), only if the core works end to end by Saturday evening; drop the ElevenLabs track submission if cut
+4. Voice mode awareness and spoken nudges (feature 8), about 3 hours; drop the ElevenLabs track submission if cut
+5. ElevenLabs rehearsal (feature 5), only if the core and feature 8 work end to end by Saturday evening
 Open questions:
 • The exact submission deadline from the hacker guide. Adjust the hours to match
 • Whether one project can enter both the Assurant and Microsoft challenges

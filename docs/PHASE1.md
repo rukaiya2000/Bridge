@@ -860,4 +860,6 @@ Add entries here for any contract change, selector change, blocker or decision. 
 
 | Date/time | Who | Note |
 |---|---|---|
+| 2026-09-26 | – | Skeleton added for all folders. Notes: `core/fixtures/demo-arc.labeled.json` is a **hand-labeled placeholder** (Person2 replaces it with CLI-labeled output from the real arc text); the demo arc reaches `concerning` on day 4 in pattern mode and never passes `watch` in single mode. Gemini selectors in `extension/src/adapters/gemini.ts` are still unverified. Feature 8 lives extension-side only (no contract change): `mic-hook.js` (MAIN world), `offscreen.html`, `offscreen` permission, `voice` storage key and `settings.spokenNudges`. Both content scripts share `content/common.ts`, so nudge and crisis UI also show on the three session-only sites |
+| 2026-09-26 | – | **Proposed, Phase 2 (not a Phase 1 change):** voice mode awareness (`desc.md` feature 8). Adds `voice?: boolean` to `SessionEvent` and `voiceMinutes`, `lateNightVoiceSessions` to `DayBucket`. Optional fields, so Phase 1 code is unaffected. Needs both people to agree before merging |
 | 2026-09-26 | – | Spec created |
