@@ -13,6 +13,7 @@ async function loadSettings() {
   $<HTMLInputElement>("model").value = s.model;
   $<HTMLInputElement>("nudges").checked = s.nudgesEnabled;
   $<HTMLInputElement>("spoken").checked = s.spokenNudges;
+  $<HTMLInputElement>("strict").checked = s.privacyStrict;
   $<HTMLInputElement>("api").value = s.apiUrl;
   $<HTMLInputElement>("child").value = s.childId;
 }
@@ -20,9 +21,10 @@ async function loadSettings() {
 $("save").addEventListener("click", async () => {
   await store.set("settings", {
     geminiKey: $<HTMLInputElement>("key").value.trim(),
-    model: $<HTMLInputElement>("model").value.trim() || "gemini-2.5-flash",
+    model: $<HTMLInputElement>("model").value.trim() || "gemini-3.8-flash",
     nudgesEnabled: $<HTMLInputElement>("nudges").checked,
     spokenNudges: $<HTMLInputElement>("spoken").checked,
+    privacyStrict: $<HTMLInputElement>("strict").checked,
     apiUrl: $<HTMLInputElement>("api").value.trim() || store.DEFAULTS.settings.apiUrl,
     childId: $<HTMLInputElement>("child").value.trim() || store.DEFAULTS.settings.childId,
   });

@@ -6,7 +6,7 @@ import {
 import { BarChart } from "@mantine/charts";
 import {
   IconArrowDownRight, IconArrowUpRight, IconBell, IconBulb, IconCheck, IconClock, IconCopy, IconEye, IconEyeOff,
-  IconMicrophone, IconMoonStars, IconShieldCheck, IconShieldLock,
+  IconLock, IconMicrophone, IconMoonStars, IconShieldCheck, IconShieldLock,
 } from "@tabler/icons-react";
 import type { SiteAggregate, Starter, ToolRating, TopicTrend, Week } from "./api";
 import { hourLabel, hours, isLate, LEVEL_COLOR, LEVEL_TEXT, sum, topicLabel, worstLevel } from "./format";
@@ -104,7 +104,7 @@ export function Stats({ week, prev }: { week: Week; prev: Week | null }) {
   const p = prev?.sites ?? null;
   const n = (x: number) => String(x);
   return (
-    <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="lg">
+    <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 5 }} spacing="lg">
       <Stat label="Time on AI" value={hours(sum(week.sites, "active_minutes"))} icon={<IconClock size={24} />} color="indigo"
         now={sum(week.sites, "active_minutes")} before={p && sum(p, "active_minutes")} format={hours} />
       <Stat label="Late-night sessions" value={n(sum(week.sites, "late_night_sessions"))} icon={<IconMoonStars size={24} />} color="grape"
@@ -113,6 +113,8 @@ export function Stats({ week, prev }: { week: Week; prev: Week | null }) {
         now={sum(week.sites, "voice_minutes")} before={p && sum(p, "voice_minutes")} format={hours} />
       <Stat label="Nudges shown" value={n(sum(week.sites, "nudges_shown"))} icon={<IconBell size={24} />} color="yellow"
         now={sum(week.sites, "nudges_shown")} before={p && sum(p, "nudges_shown")} format={n} />
+      <Stat label="Privacy pauses" value={n(sum(week.sites, "privacy_pauses"))} icon={<IconLock size={24} />} color="teal"
+        now={sum(week.sites, "privacy_pauses")} before={p && sum(p, "privacy_pauses")} format={n} />
     </SimpleGrid>
   );
 }
@@ -244,6 +246,7 @@ export function Privacy() {
             <List.Item>Messages are never stored or sent to Bridge's servers; only labels are kept</List.Item>
             <List.Item>Only counts are synced, then deleted after 8 weeks</List.Item>
             <List.Item>If there are signs of abuse at home, alerts are held back</List.Item>
+            <List.Item>Phone numbers, addresses, IDs and passwords are caught before they're sent to a chatbot. You see only how often, never what</List.Item>
           </List>
         </div>
       </SimpleGrid>

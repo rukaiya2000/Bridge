@@ -31,5 +31,5 @@ export const formatWeek = (start: string) => {
 
 export const previousWeek = (start: string) => format(subDays(parseISO(start), 7), "yyyy-MM-dd");
 
-export const sum = (sites: SiteAggregate[], key: "active_minutes" | "late_night_sessions" | "voice_minutes" | "nudges_shown") =>
+export const sum = (sites: SiteAggregate[], key: "active_minutes" | "late_night_sessions" | "voice_minutes" | "nudges_shown" | "privacy_pauses") =>
   sites.reduce((n, s) => n + s[key], 0);

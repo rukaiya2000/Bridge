@@ -10,6 +10,7 @@
       "late_night_sessions": 1,
       "voice_minutes": 10,
       "nudges_shown": 1,
+      "privacy_pauses": 0,
       "paid_tier": false
     }
   ],

@@ -12,6 +12,9 @@ export const SELECTORS = {
   stopButton: 'button[aria-label*="Stop" i]',
   // Screen-reader-only labels ("You said", "Gemini said") that must not count as message text.
   hiddenLabel: ".cdk-visually-hidden, .visually-hidden",
+  // Privacy guard (privacy/guard.ts): the message box and its send button. Unverified guesses.
+  composer: 'rich-textarea [contenteditable="true"], .ql-editor[contenteditable="true"]',
+  sendButton: 'button[aria-label*="Send" i], button.send-button',
 };
 
 const CONVERSATION_PATH = /\/app\/([A-Za-z0-9_-]+)/;

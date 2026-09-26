@@ -44,6 +44,7 @@ WEEKLY_VALIDATOR = {
             "late_night_sessions": {"bsonType": "int", "minimum": 0},
             "voice_minutes": {"bsonType": "int", "minimum": 0},
             "nudges_shown": {"bsonType": "int", "minimum": 0},
+            "privacy_pauses": {"bsonType": "int", "minimum": 0},
             "paid_tier": {"bsonType": ["bool", "null"]},
             "synced_at": {"bsonType": "date"},
         },

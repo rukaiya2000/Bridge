@@ -367,6 +367,12 @@
             "minimum": 0.0,
             "title": "Nudges Shown"
           },
+          "privacy_pauses": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Privacy Pauses",
+            "default": 0
+          },
           "paid_tier": {
             "anyOf": [
               {

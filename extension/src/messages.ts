@@ -7,7 +7,9 @@ export type ToWorker =
   // Feature 8: mic opened or closed on an AI site. Timing only, never audio.
   | { type: "voice"; site: Site; active: boolean; ts: number }
   // options page: send this week to the sync API now
-  | { type: "sync-now" };
+  | { type: "sync-now" }
+  // privacy guard paused a message or upload. Kinds of info only, never the values.
+  | { type: "privacy-pause"; site: Site; what: "message" | "file"; findings: string[]; proceeded: boolean };
 
 // service worker → content script (chrome.tabs.sendMessage to the sender tab)
 export type ToContent =

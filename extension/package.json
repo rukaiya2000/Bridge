@@ -16,7 +16,9 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "@redactpii/node": "^1.0.17",
     "async-mutex": "^0.5.0",
-    "date-fns": "^4.4.0"
+    "date-fns": "^4.4.0",
+    "pdfjs-dist": "^6.3.289"
   }
 }

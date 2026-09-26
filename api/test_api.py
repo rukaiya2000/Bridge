@@ -47,6 +47,15 @@ def test_weeks_newest_first(client):
     assert client.get("/children/nobody/weeks").json() == []
 
 
+def test_privacy_pauses_round_trip_and_default_to_zero(client):
+    week = {**PAYLOAD, "sites": [{**PAYLOAD["sites"][0], "privacy_pauses": 3}]}
+    client.post("/sync", json=week)
+    assert client.get(WEEK).json()["sites"][0]["privacy_pauses"] == 3
+    old = {**PAYLOAD, "sites": [{k: v for k, v in PAYLOAD["sites"][0].items() if k != "privacy_pauses"}]}
+    client.post("/sync", json=old)  # older extensions don't send the field
+    assert client.get(WEEK).json()["sites"][0]["privacy_pauses"] == 0
+
+
 def test_rejects_text_fields(client):
     bad = {**PAYLOAD, "sites": [{**PAYLOAD["sites"][0], "text": "you get me better than anyone"}]}
     assert client.post("/sync", json=bad).status_code == 422

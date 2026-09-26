@@ -6,6 +6,7 @@ import type { ToContent, ToOffscreen, ToWorker } from "../messages";
 import * as store from "../storage";
 import { buildPayload, pruneDays } from "../sync/aggregate";
 import NUDGES from "../ui/nudges.json";
+import { redactPersonal } from "../privacy/detect";
 
 const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
@@ -38,6 +39,7 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   if (msg.type === "heartbeat") void locked(() => onHeartbeat(msg.site, msg.ts, msg.interacting, tabId));
   if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
   if (msg.type === "sync-now") void syncNow();
+  if (msg.type === "privacy-pause") void locked(() => onPrivacyPause(msg.site, msg.what, msg.findings, msg.proceeded));
   return false;
 });
 
@@ -76,7 +78,10 @@ async function onTurn(turn: Turn, tabId?: number) {
 async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefined, crisisShown: boolean) {
   // Label outside the lock: the Gemini call can take seconds and must not stall heartbeats.
   const settings = await store.get("settings");
-  const labels = await core.labelTurn(user, bot, { geminiKey: settings.geminiKey || undefined, model: settings.model });
+  // Personal details are replaced before the text leaves the device for labeling. The on-device
+  // crisis/abuse rules inside labelTurn still work: those phrases are not personal details.
+  const clean = (t: Turn | null) => t && { ...t, text: redactPersonal(t.text) };
+  const labels = await core.labelTurn(clean(user)!, clean(bot), { geminiKey: settings.geminiKey || undefined, model: settings.model });
   if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
   await locked(() => recordTurn(user, labels, tabId));
 }
@@ -241,11 +246,12 @@ async function doSync() {
 
 async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus"]>> {
   const { settings, payload } = await locked(async () => {
-    const [settings, profiles, hourly, voice, nudgeLog] = await Promise.all([
+    const [settings, profiles, hourly, voice, nudgeLog, privacyLog] = await Promise.all([
       store.get("settings"), store.get("profiles"), store.get("hourly"), store.get("voice"), store.get("nudgeLog"),
+      store.get("privacyLog"),
     ]);
     const payload = buildPayload({
-      childId: settings.childId, now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog,
+      childId: settings.childId, now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog, privacy: privacyLog,
     });
     return { settings, payload };
   });
@@ -267,4 +273,15 @@ async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus
     }
   }
   return status;
+}
+
+// ---- privacy guard (privacy/guard.ts) ----
+
+async function onPrivacyPause(site: Site, what: "message" | "file", findings: string[], proceeded: boolean) {
+  console.info(`[Bridge] privacy pause on ${site}: ${what} with [${findings}], ${proceeded ? "sent anyway" : "held back"}`);
+  const log = pruneDays(await store.get("privacyLog"), Date.now());
+  const today = dayKey(Date.now());
+  log[today] = { ...log[today], [site]: (log[today]?.[site] ?? 0) + 1 };
+  await store.set("privacyLog", log);
+  scheduleSync();
 }

@@ -9,6 +9,7 @@ export interface Settings {
   spokenNudges: boolean; // feature 8
   apiUrl: string;        // sync API (api/main.py)
   childId: string;       // which child the parent dashboard shows ("demo" by default)
+  privacyStrict: boolean; // true: personal info can't be sent at all (no "send anyway")
 }
 
 export interface Store {
@@ -26,13 +27,14 @@ export interface Store {
   // Aggregates kept only for sync (sync/aggregate.ts). Topic labels and counts, never text.
   hourly: HourlyTopics;
   nudgeLog: PerDaySite;
+  privacyLog: PerDaySite; // privacy pauses per day and site (counts only)
   syncStatus: { at: number; ok: boolean; message: string } | null;
 }
 
 export const DEFAULTS: Store = {
   settings: {
-    geminiKey: "", model: "gemini-2.5-flash", nudgesEnabled: true, spokenNudges: true,
-    apiUrl: "http://localhost:8000", childId: "demo",
+    geminiKey: "", model: "gemini-3.8-flash", nudgesEnabled: true, spokenNudges: true,
+    apiUrl: "http://localhost:8000", childId: "demo", privacyStrict: false,
   },
   profiles: {},
   state: {},
@@ -42,6 +44,7 @@ export const DEFAULTS: Store = {
   voice: { current: {}, minutesByDay: {} },
   hourly: {},
   nudgeLog: {},
+  privacyLog: {},
   syncStatus: null,
 };
 
@@ -56,5 +59,5 @@ export async function set<K extends keyof Store>(key: K, value: Store[K]): Promi
 }
 
 export async function resetData(): Promise<void> {
-  await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug", "voice", "hourly", "nudgeLog", "syncStatus"]);
+  await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug", "voice", "hourly", "nudgeLog", "privacyLog", "syncStatus"]);
 }

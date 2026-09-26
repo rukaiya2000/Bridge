@@ -34,6 +34,7 @@ class SiteAggregate(Strict):
     late_night_sessions: int = Field(ge=0)
     voice_minutes: int = Field(ge=0, default=0)  # feature 8
     nudges_shown: int = Field(ge=0)
+    privacy_pauses: int = Field(ge=0, default=0)  # times personal info was caught before sending
     paid_tier: bool | None = None
 
 

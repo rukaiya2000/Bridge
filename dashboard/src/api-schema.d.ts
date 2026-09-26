@@ -180,6 +180,11 @@ export interface components {
             voice_minutes: number;
             /** Nudges Shown */
             nudges_shown: number;
+            /**
+             * Privacy Pauses
+             * @default 0
+             */
+            privacy_pauses: number;
             /** Paid Tier */
             paid_tier?: boolean | null;
         };

@@ -15,6 +15,16 @@ const CSS = `
   .crisis ul { margin: 6px 0; padding-left: 20px; }
   .crisis a { color: #0b4f8a; font-weight: 700; }
   .crisis button { margin-top: 8px; padding: 6px 14px; border-radius: 8px; border: 1px solid #9fb3c8; background: #fff; cursor: pointer; }
+  .privacy { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); z-index: 2147483001; width: min(440px, calc(100vw - 32px));
+    background: #fff; color: #1f2933; border-radius: 14px; padding: 16px 18px; font-size: 14px; line-height: 1.45;
+    box-shadow: 0 10px 40px rgba(0,0,0,.25); border-top: 4px solid #d97706; }
+  .privacy.soft { border-top-color: #3e7cb1; }
+  .privacy h3 { margin: 0 0 6px; font-size: 16px; }
+  .privacy ul { margin: 6px 0; padding-left: 20px; }
+  .privacy .why { color: #52606d; font-size: 13px; margin: 6px 0 10px; }
+  .privacy .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .privacy button { padding: 7px 14px; border-radius: 8px; border: 1px solid #cbd2d9; background: #fff; cursor: pointer; font-size: 13px; }
+  .privacy button.primary { background: #3e7cb1; border-color: #3e7cb1; color: #fff; }
 `;
 
 export function mountShadow(): ShadowRoot {

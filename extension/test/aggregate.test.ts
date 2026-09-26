@@ -48,7 +48,7 @@ describe("buildPayload", () => {
     expect(out.hourly_topics).toEqual([{ date: "2026-09-01", hour: 23, topic: "stress", count: 2 }]);
     expect(out.sites).toEqual([{
       site: "gemini", level: expect.any(String), score: expect.any(Number),
-      active_minutes: 60, late_night_sessions: 1, voice_minutes: 7, nudges_shown: 1, paid_tier: null,
+      active_minutes: 60, late_night_sessions: 1, voice_minutes: 7, nudges_shown: 1, privacy_pauses: 0, paid_tier: null,
     }]);
     expect(JSON.stringify(out)).not.toMatch(/religion/);
   });

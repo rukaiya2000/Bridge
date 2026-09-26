@@ -24,6 +24,7 @@ export interface SyncPayload {
     late_night_sessions: number;
     voice_minutes: number;
     nudges_shown: number;
+    privacy_pauses: number;
     paid_tier: boolean | null;
   }[];
   hourly_topics: { date: string; hour: number; topic: Topic; count: number }[];
@@ -36,6 +37,7 @@ export interface AggregateInput {
   hourly: HourlyTopics;
   voiceMinutes: PerDaySite;
   nudges: PerDaySite;
+  privacy?: PerDaySite; // privacy pauses per day and site
 }
 
 // Monday of the local week containing `ts`, "YYYY-MM-DD".
@@ -71,6 +73,7 @@ export function buildPayload(input: AggregateInput): SyncPayload {
       late_night_sessions: p.days.reduce((n, d) => n + d.lateNightSessions, 0),
       voice_minutes: sumDays(input.voiceMinutes, p.site),
       nudges_shown: sumDays(input.nudges, p.site),
+      privacy_pauses: sumDays(input.privacy ?? {}, p.site),
       paid_tier: null, // not detected yet
     };
   });
