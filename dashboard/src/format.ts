@@ -10,7 +10,14 @@ export const LEVEL_COLOR: Record<Level, string> = { healthy: "teal", watch: "yel
 
 export const hours = (minutes: number) => (minutes < 60 ? `${minutes} min` : `${(minutes / 60).toFixed(1)} h`);
 
-export const hourLabel = (h: number) => (h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`);
+// Same kinds as extension/src/privacy/detect.ts FINDING_LABEL. The dashboard only ever gets the kind.
+export const FINDING_LABEL: Record<string, string> = {
+  phone: "a phone number", email: "an email address", ssn: "a Social Security number", card: "a payment card number",
+  bank: "a bank account number", address: "a home address", password: "a password", birthday: "a date of birth",
+  student_id: "a student ID", id_document: "an ID, school or medical document",
+};
+
+export const hourLabel =(h: number) => (h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`);
 
 export const formatWeek = (start: string) => {
   const d = parseISO(start);

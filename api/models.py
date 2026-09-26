@@ -29,6 +29,30 @@ class HourlyTopicCount(Strict):
     count: int = Field(ge=0)
 
 
+# Kinds of personal info the extension's privacy guard catches (extension/src/privacy/detect.ts).
+Finding = Literal[
+    "phone", "email", "ssn", "card", "bank", "address", "password", "birthday", "student_id", "id_document",
+]
+
+
+class VoiceSession(Strict):
+    """One microphone use on an AI site (feature 8). When and how long only: audio is never read."""
+    date: date
+    hour: int = Field(ge=0, le=23)  # local hour the mic turned on
+    site: Site
+    minutes: int = Field(ge=0)
+
+
+class PrivacyFlag(Strict):
+    """Personal info caught before it was sent. The kinds of info only, never the values."""
+    date: date
+    hour: int = Field(ge=0, le=23)
+    site: Site
+    what: Literal["message", "file"]
+    findings: list[Finding] = Field(min_length=1)
+    sent: bool  # True: the teen chose "send anyway"; False: held back
+
+
 class SiteAggregate(Strict):
     site: Site
     level: Level          # already abuse-masked by the aggregator
@@ -49,14 +73,17 @@ class SyncPayload(Strict):
     week_start: date
     sites: list[SiteAggregate]
     hourly_topics: list[HourlyTopicCount]
+    # Older extensions don't send these.
+    voice_sessions: list[VoiceSession] = []
+    privacy_flags: list[PrivacyFlag] = []
 
     @model_validator(mode="after")
-    def topics_inside_week(self) -> "SyncPayload":
-        # A sync replaces the whole week, so counts outside it would never be cleaned up.
+    def dates_inside_week(self) -> "SyncPayload":
+        # A sync replaces the whole week, so rows outside it would never be cleaned up.
         end = self.week_start + timedelta(days=7)
-        for t in self.hourly_topics:
+        for t in [*self.hourly_topics, *self.voice_sessions, *self.privacy_flags]:
             if not self.week_start <= t.date < end:
-                raise ValueError(f"hourly topic date {t.date} is outside the week starting {self.week_start}")
+                raise ValueError(f"date {t.date} is outside the week starting {self.week_start}")
         return self
 
 
@@ -106,3 +133,5 @@ class WeekSummary(Strict):
     devices: int
     sites: list[SiteAggregate]
     hourly_topics: list[HourlyTopicCount]
+    voice_sessions: list[VoiceSession]  # every device's, oldest first
+    privacy_flags: list[PrivacyFlag]

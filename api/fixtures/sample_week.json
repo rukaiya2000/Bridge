@@ -93,5 +93,15 @@
       "topic": "school",
       "count": 1
     }
+  ],
+  "voice_sessions": [
+    { "date": "2026-09-04", "hour": 0, "site": "gemini", "minutes": 12 },
+    { "date": "2026-09-06", "hour": 0, "site": "gemini", "minutes": 20 },
+    { "date": "2026-09-07", "hour": 23, "site": "gemini", "minutes": 8 }
+  ],
+  "privacy_flags": [
+    { "date": "2026-09-03", "hour": 23, "site": "gemini", "what": "message", "findings": ["address"], "sent": false },
+    { "date": "2026-09-05", "hour": 23, "site": "gemini", "what": "message", "findings": ["phone"], "sent": true },
+    { "date": "2026-09-06", "hour": 20, "site": "characterai", "what": "file", "findings": ["id_document"], "sent": false }
   ]
 }

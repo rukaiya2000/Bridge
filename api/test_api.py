@@ -22,6 +22,30 @@ def test_sync_roundtrip(client):
     assert got["devices"] == 1
     key = lambda t: (t["date"], t["hour"], t["topic"])
     assert sorted(got["hourly_topics"], key=key) == sorted(PAYLOAD["hourly_topics"], key=key)
+    assert got["voice_sessions"] == PAYLOAD["voice_sessions"]
+    assert got["privacy_flags"] == PAYLOAD["privacy_flags"]
+
+
+def test_activity_resync_replaces_only_that_devices_log(client):
+    mic = {"date": "2026-09-02", "hour": 23, "site": "gemini", "minutes": 5}
+    client.post("/sync", json={**_device("laptop"), "voice_sessions": [mic]})
+    client.post("/sync", json={**_device("chromebook"), "voice_sessions": [{**mic, "minutes": 9}]})
+    client.post("/sync", json={**_device("laptop"), "voice_sessions": [mic, {**mic, "hour": 1, "date": "2026-09-03"}]})
+    got = client.get("/children/teen/weeks/2026-09-01").json()["voice_sessions"]
+    assert sorted(v["minutes"] for v in got) == [5, 5, 9]
+    old = _device("tablet")  # older extensions send no activity log
+    assert client.post("/sync", json=old).status_code == 200
+
+
+def test_privacy_flags_hold_kinds_never_values(client):
+    flag = {"date": "2026-09-02", "hour": 10, "site": "gemini", "what": "message", "findings": ["phone"], "sent": True}
+    assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [{**flag, "value": "305-555-0100"}]}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [{**flag, "findings": ["305-555-0100"]}]}).status_code == 422
+    assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [{**flag, "date": "2026-09-09"}]}).status_code == 422
+    doc = {"account_id": "a", "child_id": "demo", "device_id": "d", "week_start": "2026-09-01", "kind": "privacy",
+           "date": "2026-09-02", "hour": 10, "site": "gemini", "synced_at": datetime.now(timezone.utc), "value": "305-555-0100"}
+    with pytest.raises(WriteError):
+        app.state.db.activity.insert_one(doc)
 
 
 def test_data_survives_restart(client):
@@ -42,7 +66,7 @@ def test_missing_week_is_404(client):
 
 
 def test_weeks_newest_first(client):
-    later = {**PAYLOAD, "week_start": "2026-09-08", "hourly_topics": []}
+    later = {**PAYLOAD, "week_start": "2026-09-08", "hourly_topics": [], "voice_sessions": [], "privacy_flags": []}
     client.post("/sync", json=later)
     client.post("/sync", json=PAYLOAD)
     assert client.get("/children/demo/weeks").json() == ["2026-09-08", "2026-09-01"]

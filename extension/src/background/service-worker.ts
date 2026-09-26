@@ -7,7 +7,7 @@ import type { ToContent, ToOffscreen, ToWorker } from "../messages";
 import * as store from "../storage";
 import { buildPayload, pruneDays } from "../sync/aggregate";
 import NUDGES from "../ui/nudges.json";
-import { redactPersonal } from "../privacy/detect";
+import { redactPersonal, type Finding } from "../privacy/detect";
 
 const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
@@ -253,8 +253,14 @@ async function onVoice(site: Site, active: boolean, ts: number) {
     if (!cur) voice.current[site] = { start: ts };
   } else if (cur) {
     delete voice.current[site];
+    const minutes = Math.round((ts - cur.start) / 60000);
     const day = (voice.minutesByDay[dayKey(cur.start)] ??= {});
-    day[site] = (day[site] ?? 0) + Math.round((ts - cur.start) / 60000);
+    day[site] = (day[site] ?? 0) + minutes;
+    // Each mic use is logged for the parent's activity list, even one shorter than a minute.
+    const log = pruneDays(await store.get("voiceLog"), ts);
+    (log[dayKey(cur.start)] ??= []).push({ hour: new Date(cur.start).getHours(), site, minutes });
+    await store.set("voiceLog", log);
+    scheduleSync();
     // TODO(phase 2): feed voice minutes into core via SessionEvent once the contract change is agreed.
   }
   await store.set("voice", voice);
@@ -309,12 +315,13 @@ async function doSync() {
 
 async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus"]>> {
   const { settings, auth, payload } = await locked(async () => {
-    const [settings, auth, profiles, hourly, voice, nudgeLog, privacyLog] = await Promise.all([
+    const [settings, auth, profiles, hourly, voice, nudgeLog, voiceLog, privacyFlags] = await Promise.all([
       store.get("settings"), store.get("auth"), store.get("profiles"), store.get("hourly"), store.get("voice"), store.get("nudgeLog"),
-      store.get("privacyLog"),
+      store.get("voiceLog"), store.get("privacyFlags"),
     ]);
     const payload = buildPayload({
-      childId: settings.childId, deviceId: await store.deviceId(), now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog, privacy: privacyLog,
+      childId: settings.childId, deviceId: await store.deviceId(), now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog,
+      voiceLog, privacyFlags,
     });
     return { settings, auth, payload };
   });
@@ -345,11 +352,11 @@ async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus
 
 // ---- privacy guard (privacy/guard.ts) ----
 
-async function onPrivacyPause(site: Site, what: "message" | "file", findings: string[], proceeded: boolean) {
+async function onPrivacyPause(site: Site, what: "message" | "file", findings: Finding[], proceeded: boolean) {
   console.info(`[Bridge] privacy pause on ${site}: ${what} with [${findings}], ${proceeded ? "sent anyway" : "held back"}`);
-  const log = pruneDays(await store.get("privacyLog"), Date.now());
-  const today = dayKey(Date.now());
-  log[today] = { ...log[today], [site]: (log[today]?.[site] ?? 0) + 1 };
-  await store.set("privacyLog", log);
+  const now = Date.now();
+  const log = pruneDays(await store.get("privacyFlags"), now);
+  (log[dayKey(now)] ??= []).push({ hour: new Date(now).getHours(), site, what, findings, sent: proceeded });
+  await store.set("privacyFlags", log);
   scheduleSync();
 }

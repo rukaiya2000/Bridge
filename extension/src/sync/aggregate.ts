@@ -7,11 +7,16 @@ import { format, parseISO, startOfISOWeek } from "date-fns";
 import { core } from "@bridge/core";
 import type { DayBucket, Level, Profile, Site, Topic } from "../../../core/src/types";
 import { dayKey, shiftDay } from "../../../core/src/time";
+import type { Finding } from "../privacy/detect";
 
 // Per local day, per hour ("0".."23"), per parent-visible topic.
 export type HourlyTopics = Record<string, Record<string, Partial<Record<Topic, number>>>>;
 // Per local day, per site.
 export type PerDaySite = Record<string, Partial<Record<Site, number>>>;
+// Per local day, a list of events. Timing and kinds of info only, never audio, text or values.
+export type DayLog<T> = Record<string, T[]>;
+export interface VoiceEntry { hour: number; site: Site; minutes: number }
+export interface PrivacyEntry { hour: number; site: Site; what: "message" | "file"; findings: Finding[]; sent: boolean }
 
 export interface SyncPayload {
   child_id: string;
@@ -29,6 +34,8 @@ export interface SyncPayload {
     paid_tier: boolean | null;
   }[];
   hourly_topics: { date: string; hour: number; topic: Topic; count: number }[];
+  voice_sessions: (VoiceEntry & { date: string })[];
+  privacy_flags: (PrivacyEntry & { date: string })[];
 }
 
 export interface AggregateInput {
@@ -39,7 +46,8 @@ export interface AggregateInput {
   hourly: HourlyTopics;
   voiceMinutes: PerDaySite;
   nudges: PerDaySite;
-  privacy?: PerDaySite; // privacy pauses per day and site
+  voiceLog?: DayLog<VoiceEntry>;       // each mic use
+  privacyFlags?: DayLog<PrivacyEntry>; // each privacy pause
 }
 
 // Monday of the local week containing `ts`, "YYYY-MM-DD".
@@ -64,6 +72,9 @@ export function buildPayload(input: AggregateInput): SyncPayload {
   });
   const week = Object.values(input.profiles).map(inWeek).filter((p) => p.days.length);
   const sumDays = (rec: PerDaySite, site: Site) => [...days].reduce((n, d) => n + (rec[d]?.[site] ?? 0), 0);
+  const inWeekLog = <T>(log: DayLog<T> = {}) => [...days].sort().flatMap((date) => (log[date] ?? []).map((e) => ({ ...e, date })));
+  const voice_sessions = inWeekLog(input.voiceLog);
+  const privacy_flags = inWeekLog(input.privacyFlags);
 
   const sites = week.map((p) => {
     const { level, score } = core.scoreProfile(p, input.now, week);
@@ -75,7 +86,7 @@ export function buildPayload(input: AggregateInput): SyncPayload {
       late_night_sessions: p.days.reduce((n, d) => n + d.lateNightSessions, 0),
       voice_minutes: sumDays(input.voiceMinutes, p.site),
       nudges_shown: sumDays(input.nudges, p.site),
-      privacy_pauses: sumDays(input.privacy ?? {}, p.site),
+      privacy_pauses: privacy_flags.filter((f) => f.site === p.site).length,
       paid_tier: null, // not detected yet
     };
   });
@@ -89,7 +100,7 @@ export function buildPayload(input: AggregateInput): SyncPayload {
     }
   }
 
-  return { child_id: input.childId, device_id: input.deviceId, week_start: start, sites, hourly_topics };
+  return { child_id: input.childId, device_id: input.deviceId, week_start: start, sites, hourly_topics, voice_sessions, privacy_flags };
 }
 
 // Keeps the last `keep` days of a per-day record (older days can no longer be in a synced week).

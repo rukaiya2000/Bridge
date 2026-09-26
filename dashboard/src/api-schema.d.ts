@@ -266,6 +266,33 @@ export interface components {
             /** Email */
             email: string;
         };
+        /**
+         * PrivacyFlag
+         * @description Personal info caught before it was sent. The kinds of info only, never the values.
+         */
+        PrivacyFlag: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Hour */
+            hour: number;
+            /**
+             * Site
+             * @enum {string}
+             */
+            site: "chatgpt" | "claude" | "characterai" | "gemini";
+            /**
+             * What
+             * @enum {string}
+             */
+            what: "message" | "file";
+            /** Findings */
+            findings: ("phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document")[];
+            /** Sent */
+            sent: boolean;
+        };
         /** SiteAggregate */
         SiteAggregate: {
             /**
@@ -330,6 +357,16 @@ export interface components {
             sites: components["schemas"]["SiteAggregate"][];
             /** Hourly Topics */
             hourly_topics: components["schemas"]["HourlyTopicCount"][];
+            /**
+             * Voice Sessions
+             * @default []
+             */
+            voice_sessions: components["schemas"]["VoiceSession"][];
+            /**
+             * Privacy Flags
+             * @default []
+             */
+            privacy_flags: components["schemas"]["PrivacyFlag"][];
         };
         /**
          * ToolRating
@@ -388,6 +425,26 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * VoiceSession
+         * @description One microphone use on an AI site (feature 8). When and how long only: audio is never read.
+         */
+        VoiceSession: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Hour */
+            hour: number;
+            /**
+             * Site
+             * @enum {string}
+             */
+            site: "chatgpt" | "claude" | "characterai" | "gemini";
+            /** Minutes */
+            minutes: number;
+        };
+        /**
          * WeekSummary
          * @description A child's week as the parent sees it: every device added up (api/db.py load_week).
          */
@@ -405,6 +462,10 @@ export interface components {
             sites: components["schemas"]["SiteAggregate"][];
             /** Hourly Topics */
             hourly_topics: components["schemas"]["HourlyTopicCount"][];
+            /** Voice Sessions */
+            voice_sessions: components["schemas"]["VoiceSession"][];
+            /** Privacy Flags */
+            privacy_flags: components["schemas"]["PrivacyFlag"][];
         };
     };
     responses: never;

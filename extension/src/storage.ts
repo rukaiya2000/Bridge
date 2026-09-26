@@ -1,6 +1,6 @@
 // Typed helpers over chrome.storage.local. No key ever holds message text.
 import type { LabelOptions, Profile, ScoreResult, Site, TurnLabels } from "../../core/src/types";
-import type { HourlyTopics, PerDaySite } from "./sync/aggregate";
+import type { DayLog, HourlyTopics, PerDaySite, PrivacyEntry, VoiceEntry } from "./sync/aggregate";
 import { DEFAULT_LLM_BASE_URL, DEFAULT_LLM_MODEL } from "../../core/src/config";
 
 export interface Settings {
@@ -30,7 +30,8 @@ export interface Store {
   // Aggregates kept only for sync (sync/aggregate.ts). Topic labels and counts, never text.
   hourly: HourlyTopics;
   nudgeLog: PerDaySite;
-  privacyLog: PerDaySite; // privacy pauses per day and site (counts only)
+  voiceLog: DayLog<VoiceEntry>;        // each mic use: when and how long, never audio
+  privacyFlags: DayLog<PrivacyEntry>;  // each privacy pause: kinds of info, never the values
   // Random id for this browser install. Several devices can share one childId; the API adds them up.
   // Its own key, not in settings, so saving the options page never replaces it.
   device: { id: string } | null;
@@ -52,7 +53,8 @@ export const DEFAULTS: Store = {
   voice: { current: {}, minutesByDay: {} },
   hourly: {},
   nudgeLog: {},
-  privacyLog: {},
+  voiceLog: {},
+  privacyFlags: {},
   device: null,
   auth: null,
   syncStatus: null,
@@ -92,7 +94,7 @@ export async function set<K extends keyof Store>(key: K, value: Store[K]): Promi
 }
 
 export async function resetData(): Promise<void> {
-  await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug", "voice", "hourly", "nudgeLog", "privacyLog", "syncStatus"]);
+  await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug", "voice", "hourly", "nudgeLog", "voiceLog", "privacyFlags", "privacyLog", "syncStatus"]);
 }
 
 // Creates this install's device id on first use.

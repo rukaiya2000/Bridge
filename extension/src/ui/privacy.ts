@@ -20,7 +20,7 @@ export function showPrivacyPause(
     for (const f of opts.findings) list.append(el("li", undefined, FINDING_LABEL[f]));
     card.append(list);
     card.append(el("div", "why", "Chatbots can store what you send, and people at the company may see it. " +
-      "Once it's shared, you can't take it back."));
+      "Once it's shared, you can't take it back. Your parent will see that this was paused, not what it was."));
 
     const actions = el("div", "actions");
     const done = (proceed: boolean) => { card.remove(); resolve({ proceed }); };

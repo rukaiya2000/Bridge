@@ -3,6 +3,7 @@ fields, and the weekly_aggregates validator below rejects them again at the data
 
   weekly_aggregates  one document per account, child, device, week and site (level, score, hours, ...)
   hourly_topics      time-series collection of topic counts per hour
+  activity           mic uses and personal-info flags (kinds of info only), one document each
   tool_ratings       hand-curated rating per AI site      (seeded from api/fixtures/tool_ratings.json)
   starters           vetted conversation starters         (seeded from api/fixtures/starters.json)
 
@@ -21,7 +22,7 @@ from pymongo import MongoClient, UpdateOne
 from pymongo.database import Database
 from pymongo.errors import CollectionInvalid
 
-from api.models import Level, Site, Starter, SyncPayload, ToolRating, TopicTrend, WeekSummary
+from api.models import Finding, Level, Site, Starter, SyncPayload, ToolRating, TopicTrend, WeekSummary
 
 load_dotenv()  # MONGODB_URI / MONGODB_DB from the repo's .env, if present
 
@@ -54,6 +55,31 @@ WEEKLY_VALIDATOR = {
     }
 }
 
+# Same guard for the activity log: timing and kinds of info, never values or text.
+ACTIVITY_VALIDATOR = {
+    "$jsonSchema": {
+        "bsonType": "object",
+        "additionalProperties": False,
+        "required": ["account_id", "child_id", "device_id", "week_start", "kind", "date", "hour", "site", "synced_at"],
+        "properties": {
+            "_id": {"bsonType": "objectId"},
+            "account_id": {"bsonType": "string"},
+            "child_id": {"bsonType": "string"},
+            "device_id": {"bsonType": "string"},
+            "week_start": {"bsonType": "string"},
+            "kind": {"enum": ["voice", "privacy"]},
+            "date": {"bsonType": "string"},
+            "hour": {"bsonType": "int", "minimum": 0, "maximum": 23},
+            "site": {"enum": list(get_args(Site))},
+            "minutes": {"bsonType": "int", "minimum": 0},
+            "what": {"enum": ["message", "file"]},
+            "findings": {"bsonType": "array", "items": {"enum": list(get_args(Finding))}},
+            "sent": {"bsonType": "bool"},
+            "synced_at": {"bsonType": "date"},
+        },
+    }
+}
+
 
 def connect() -> MongoClient:
     uri = os.environ.get("MONGODB_URI")
@@ -78,10 +104,13 @@ def ensure_schema(db: Database) -> None:
         )
     except CollectionInvalid:
         pass  # already exists
-    try:
-        db.create_collection("weekly_aggregates", validator=WEEKLY_VALIDATOR)
-    except CollectionInvalid:
-        db.command("collMod", "weekly_aggregates", validator=WEEKLY_VALIDATOR)
+    for name, validator in (("weekly_aggregates", WEEKLY_VALIDATOR), ("activity", ACTIVITY_VALIDATOR)):
+        try:
+            db.create_collection(name, validator=validator)
+        except CollectionInvalid:
+            db.command("collMod", name, validator=validator)
+    db.activity.create_index([("account_id", 1), ("child_id", 1), ("week_start", 1), ("device_id", 1)])
+    db.activity.create_index("synced_at", expireAfterSeconds=ttl)
     # Before device ids, one document per child/week/site. Label those rows as one "legacy" device
     # and replace the old unique index, which would stop two devices reporting the same site.
     db.weekly_aggregates.update_many({"device_id": {"$exists": False}}, {"$set": {"device_id": "legacy"}})
@@ -140,6 +169,12 @@ def save_week(db: Database, account_id: str, p: SyncPayload) -> None:
             for t in p.hourly_topics
         ])
 
+    db.activity.delete_many(key)
+    rows = [{**v.model_dump(), "kind": "voice"} for v in p.voice_sessions]
+    rows += [{**f.model_dump(), "kind": "privacy"} for f in p.privacy_flags]
+    if rows:
+        db.activity.insert_many([{**r, **key, "date": r["date"].isoformat(), "synced_at": now} for r in rows])
+
 
 def list_weeks(db: Database, account_id: str, child_id: str) -> list[str]:
     query = {"account_id": account_id, "child_id": child_id}
@@ -193,7 +228,14 @@ def load_week(db: Database, account_id: str, child_id: str, week_start: date) ->
             "count": 1,
         }},
     ]))
-    return WeekSummary(child_id=child_id, week_start=week_start, devices=len(devices), sites=sites, hourly_topics=hourly)
+    activity = list(db.activity.find(
+        {"account_id": account_id, "child_id": child_id, "week_start": week},
+        {"_id": 0, "account_id": 0, "child_id": 0, "device_id": 0, "week_start": 0, "synced_at": 0},
+    ).sort([("date", 1), ("hour", 1)]))
+    voice = [{k: v for k, v in a.items() if k != "kind"} for a in activity if a["kind"] == "voice"]
+    privacy = [{k: v for k, v in a.items() if k != "kind"} for a in activity if a["kind"] == "privacy"]
+    return WeekSummary(child_id=child_id, week_start=week_start, devices=len(devices), sites=sites, hourly_topics=hourly,
+                       voice_sessions=voice, privacy_flags=privacy)
 
 
 def topic_trend(db: Database, account_id: str, child_id: str, week_start: date) -> list[TopicTrend]:

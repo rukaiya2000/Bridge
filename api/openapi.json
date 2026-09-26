@@ -553,6 +553,75 @@
         ],
         "title": "Me"
       },
+      "PrivacyFlag": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "what": {
+            "type": "string",
+            "enum": [
+              "message",
+              "file"
+            ],
+            "title": "What"
+          },
+          "findings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "ssn",
+                "card",
+                "bank",
+                "address",
+                "password",
+                "birthday",
+                "student_id",
+                "id_document"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Findings"
+          },
+          "sent": {
+            "type": "boolean",
+            "title": "Sent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "hour",
+          "site",
+          "what",
+          "findings",
+          "sent"
+        ],
+        "title": "PrivacyFlag",
+        "description": "Personal info caught before it was sent. The kinds of info only, never the values."
+      },
       "SiteAggregate": {
         "properties": {
           "site": {
@@ -714,6 +783,22 @@
             },
             "type": "array",
             "title": "Hourly Topics"
+          },
+          "voice_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceSession"
+            },
+            "type": "array",
+            "title": "Voice Sessions",
+            "default": []
+          },
+          "privacy_flags": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyFlag"
+            },
+            "type": "array",
+            "title": "Privacy Flags",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -877,6 +962,46 @@
         ],
         "title": "ValidationError"
       },
+      "VoiceSession": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "hour",
+          "site",
+          "minutes"
+        ],
+        "title": "VoiceSession",
+        "description": "One microphone use on an AI site (feature 8). When and how long only: audio is never read."
+      },
       "WeekSummary": {
         "properties": {
           "child_id": {
@@ -905,6 +1030,20 @@
             },
             "type": "array",
             "title": "Hourly Topics"
+          },
+          "voice_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceSession"
+            },
+            "type": "array",
+            "title": "Voice Sessions"
+          },
+          "privacy_flags": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyFlag"
+            },
+            "type": "array",
+            "title": "Privacy Flags"
           }
         },
         "additionalProperties": false,
@@ -914,7 +1053,9 @@
           "week_start",
           "devices",
           "sites",
-          "hourly_topics"
+          "hourly_topics",
+          "voice_sessions",
+          "privacy_flags"
         ],
         "title": "WeekSummary",
         "description": "A child's week as the parent sees it: every device added up (api/db.py load_week)."
