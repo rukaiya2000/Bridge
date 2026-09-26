@@ -119,6 +119,12 @@ Everything still runs on a laptop: `docker compose up` starts MongoDB, the API a
 - [ ] Parent alert path (optional, no text, suppressed on abuse signals)
 - [ ] Eval: fix top 3 failures on the tuning split, run the held-out split once, freeze numbers
 - [ ] Abuse-masking test: a crisis + abuse week shows no crisis anywhere on the dashboard
+- [ ] Voice mode awareness and spoken nudges (`desc.md` feature 8), the main ElevenLabs integration:
+  - [ ] Contract change agreed and logged in `PHASE1.md` §9: `voice?: boolean` on `SessionEvent`, `voiceMinutes` and `lateNightVoiceSessions` on `DayBucket`
+  - [ ] Main-world script wraps `getUserMedia` on the four AI domains and emits voice start and end only; no audio is read or stored
+  - [ ] `recordSession` counts voice time; a voice term in `weights.json`, tuned on the tuning split only
+  - [ ] Build-time script turns the nudge variants and crisis handoff into MP3s with ElevenLabs TTS (`ELEVENLABS_API_KEY` in `.env`); MP3s bundled in the extension
+  - [ ] Offscreen document plays the clip when a nudge or crisis fires during a voice session; the text card or panel still shows; crisis audio works offline
 
 Exit: live chat on Gemini → nudge in page → parent card updates on `localhost` with no message text anywhere in Mongo.
 
@@ -126,7 +132,7 @@ Exit: live chat on Gemini → nudge in page → parent card updates on `localhos
 
 - [ ] Deploy API and dashboard to DigitalOcean App Platform; MongoDB Atlas instead of the local container
 - [ ] Register a GoDaddy Registry domain and point it at the dashboard
-- [ ] Stretch: ElevenLabs rehearsal agent + Gemini feedback (drop the track if it's cut)
+- [ ] Stretch: ElevenLabs rehearsal agent + Gemini feedback (the ElevenLabs track rests on voice mode; rehearsal is a bonus)
 - [ ] Second site adapter only if everything above is done
 - [ ] Confusion matrix and three-row comparison table from the held-out set
 - [ ] Slides: hook, demo, numbers, privacy, roadmap; one paragraph per sponsor track

@@ -1,7 +1,14 @@
 [project]
 name = "bridge"
 version = "0.1.0"
-description = "Add your description here"
+description = "Bridge: detects unhealthy teen–AI chatbot relationship patterns. Eval harness and sync API."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "google-genai",
+    "python-dotenv",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+api = ["fastapi", "uvicorn[standard]", "pymongo"]

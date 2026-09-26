@@ -1,29 +1,51 @@
-// Debug popup: shows captured turn metadata (never text). Grows into the full view in docs/PHASE1.md §4.11.
-import { load } from "../storage";
+// Debug view: level, score and label counts per site. Shows labels only, never text.
+import type { Site, TurnLabels } from "../../../core/src/types";
+import * as store from "../storage";
+import { dayKey } from "../time";
 
-async function render() {
-  const { recentTurns } = await load("debug");
-  const table = document.getElementById("turns") as HTMLTableElement;
-  const body = table.querySelector("tbody")!;
-  document.getElementById("empty")!.hidden = recentTurns.length > 0;
-  table.hidden = recentTurns.length === 0;
-  body.replaceChildren(
-    ...[...recentTurns].reverse().map((t) => {
-      const row = document.createElement("tr");
-      for (const value of [new Date(t.ts).toLocaleTimeString(), t.role, String(t.chars), t.id]) {
-        const cell = document.createElement("td");
-        cell.textContent = value;
-        row.append(cell);
-      }
-      return row;
-    }),
-  );
+const $ = (id: string) => document.getElementById(id)!;
+
+function flags(l: TurnLabels): string {
+  const on = (["dependency", "isolation", "botHook", "crisis", "abuseAtHome"] as const).filter((k) => l[k]);
+  return [...on, ...l.topics, ...l.excludedTopics.map((t) => `(excluded) ${t}`)].join(", ") || "no signals";
 }
 
-document.getElementById("reset")!.addEventListener("click", async () => {
-  await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug"]);
-  await render();
-});
+async function render() {
+  const [profiles, state, debug, voice] = await Promise.all([
+    store.get("profiles"), store.get("state"), store.get("debug"), store.get("voice"),
+  ]);
+  const today = dayKey(Date.now());
+  const sites = $("sites");
+  sites.replaceChildren();
+  for (const site of Object.keys(profiles) as Site[]) {
+    const s = state[site];
+    const bucket = profiles[site]?.days.find((d) => d.date === today);
+    const box = document.createElement("div");
+    box.className = "site";
+    const head = document.createElement("div");
+    const chip = document.createElement("span");
+    chip.className = `chip ${s?.level ?? "healthy"}`;
+    chip.textContent = s?.level ?? "healthy";
+    head.append(`${site} `, chip, ` score ${(s?.score ?? 0).toFixed(1)}`);
+    const reasons = document.createElement("ul");
+    for (const r of s?.reasons ?? []) { const li = document.createElement("li"); li.textContent = r; reasons.append(li); }
+    const today_ = document.createElement("div");
+    today_.className = "muted";
+    const voiceMin = voice.minutesByDay[today]?.[site] ?? 0;
+    today_.textContent = `today: ${bucket?.userTurns ?? 0} turns, ${bucket?.activeMinutes ?? 0} active min, ${voiceMin} voice min${voice.current[site] ? " (voice on)" : ""}`;
+    box.append(head, reasons, today_);
+    sites.append(box);
+  }
+  if (!sites.childElementCount) sites.textContent = "No activity yet.";
 
-chrome.storage.onChanged.addListener(render);
-render();
+  const list = $("labels");
+  list.replaceChildren();
+  for (const r of debug.recentLabels.slice(0, 10)) {
+    const li = document.createElement("li");
+    li.textContent = `${new Date(r.ts).toLocaleTimeString()} ${r.site} [${r.labels.source}]: ${flags(r.labels)}`;
+    list.append(li);
+  }
+}
+
+$("reset").addEventListener("click", async () => { await store.resetData(); await render(); });
+void render();

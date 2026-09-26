@@ -1,0 +1,10 @@
+{
+  "dependency": { "weight": 2.0, "cap": 4 },
+  "isolation": { "weight": 1.5, "cap": 4 },
+  "botHook": { "weight": 1.5, "cap": 4 },
+  "emotional": { "weight": 0.5, "cap": 6 },
+  "lateNight": { "weight": 2.0, "minActiveDays": 3 },
+  "streak": { "weight": 0.5, "freeDays": 2 },
+  "siteShare": { "bonus": 1.0, "minShare": 0.7, "minActiveDays": 3 },
+  "thresholds": { "watch": 3, "concerning": 7 }
+}

@@ -1,29 +1,46 @@
-// Typed helpers over chrome.storage.local. See docs/PHASE1.md §4.7.
-// Nothing stored here may contain message text.
-import type { Role, Site } from "../../core/src/types";
+// Typed helpers over chrome.storage.local. No key ever holds message text.
+import type { Profile, ScoreResult, Site, TurnLabels } from "../../core/src/types";
 
-export interface CapturedTurn {
-  ts: number;
-  site: Site;
-  role: Role;
-  id: string;
-  conversationId: string;
-  chars: number;
+export interface Settings {
+  geminiKey: string;
+  model: string;
+  nudgesEnabled: boolean;
+  spokenNudges: boolean; // feature 8
 }
 
-export interface StorageShape {
-  debug: { recentTurns: CapturedTurn[] };
+export interface Store {
+  settings: Settings;
+  profiles: Partial<Record<Site, Profile>>;
+  state: Partial<Record<Site, ScoreResult & { updatedAt: number }>>;
+  sessions: { current: Partial<Record<Site, { start: number; lastBeat: number }>> };
+  nudges: { date: string; countToday: number; nudgedSessionStarts: number[] };
+  debug: { recentLabels: { ts: number; site: Site; labels: TurnLabels }[] };
+  // Feature 8. Kept extension-side until the Phase 2 contract change (PHASE1.md §9) is agreed.
+  voice: {
+    current: Partial<Record<Site, { start: number }>>;
+    minutesByDay: Record<string, Partial<Record<Site, number>>>;
+  };
 }
 
-const DEFAULTS: StorageShape = {
-  debug: { recentTurns: [] },
+export const DEFAULTS: Store = {
+  settings: { geminiKey: "", model: "gemini-2.5-flash", nudgesEnabled: true, spokenNudges: true },
+  profiles: {},
+  state: {},
+  sessions: { current: {} },
+  nudges: { date: "", countToday: 0, nudgedSessionStarts: [] },
+  debug: { recentLabels: [] },
+  voice: { current: {}, minutesByDay: {} },
 };
 
-export async function load<K extends keyof StorageShape>(key: K): Promise<StorageShape[K]> {
+export async function get<K extends keyof Store>(key: K): Promise<Store[K]> {
   const got = await chrome.storage.local.get(key);
-  return (got[key] as StorageShape[K] | undefined) ?? structuredClone(DEFAULTS[key]);
+  return (got[key] as Store[K] | undefined) ?? structuredClone(DEFAULTS[key]);
 }
 
-export async function save<K extends keyof StorageShape>(key: K, value: StorageShape[K]): Promise<void> {
+export async function set<K extends keyof Store>(key: K, value: Store[K]): Promise<void> {
   await chrome.storage.local.set({ [key]: value });
+}
+
+export async function resetData(): Promise<void> {
+  await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug", "voice"]);
 }
