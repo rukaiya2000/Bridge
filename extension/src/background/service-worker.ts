@@ -24,7 +24,8 @@ const locked = <T>(fn: () => Promise<T>) => storageLock.runExclusive(fn);
 
 // Created on every worker start, not only onInstalled: alarms added in an update don't exist otherwise.
 for (const name of ["sessions", "sync"]) {
-  void chrome.alarms.get(name).then((a) => a ?? chrome.alarms.create(name, { periodInMinutes: 1 }));
+  // Chrome rejects with "No SW" if the extension is reloaded mid-startup; the next start retries.
+  void chrome.alarms.get(name).then((a) => a ?? chrome.alarms.create(name, { periodInMinutes: 1 })).catch(() => {});
 }
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "sessions") void locked(() => closeIdleSessions(Date.now()));

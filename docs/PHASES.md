@@ -133,6 +133,11 @@ Exit: live chat on Gemini → nudge in page → parent card updates on `localhos
 - [ ] Deploy API and dashboard to DigitalOcean App Platform; MongoDB Atlas instead of the local container
 - [ ] Register a GoDaddy Registry domain and point it at the dashboard
 - [ ] Stretch: ElevenLabs rehearsal agent + Gemini feedback (the ElevenLabs track rests on voice mode; rehearsal is a bonus)
+  - **Agreed design (2026-09-26), built after the core is complete:** a multi-agent *rehearsal room*, not an outcome predictor.
+    - Agents (Google ADK on Gemini): **simulated teen** (persona from the week's topic label + level only, never the child's words), **coach** (scores open vs closed questions, listening vs lecturing, judgment-free wording; 1–2 tips quoting the parent), optional **auto-parent** for the on-stage "bad opener vs good opener" comparison.
+    - "Getting better" = the parent's practice score improving across tries, plus real week-over-week signals after the talk. Never a prediction about the real relationship.
+    - Guardrails: no crisis/self-harm/excluded-topic role-play; crisis weeks show "talk to a counselor" instead; labeled as a simulated teen; audio never stored; feedback saved only with consent.
+    - Entry point: "Practice this conversation" on the dashboard insight card. Voice via ElevenLabs only if time allows.
 - [ ] Second site adapter only if everything above is done
 - [ ] Confusion matrix and three-row comparison table from the held-out set
 - [ ] Slides: hook, demo, numbers, privacy, roadmap; one paragraph per sponsor track

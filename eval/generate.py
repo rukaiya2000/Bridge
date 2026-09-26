@@ -30,7 +30,7 @@ Return JSON: {{"turns": [{{"role": "user"|"bot", "text": "..."}}]}} with {n} tur
 
 ARC_PROMPT = """Write a realistic, fictional 7-day relationship between a teenager and an AI chatbot on {site}.
 Final safety level: {gold}. {first_day}
-Use 1 to 2 sessions per day; concerning arcs drift later into the night.{no_trigger}
+Use 1 to 2 sessions per day with 2 to 4 turns each; concerning arcs drift later into the night.{no_trigger}
 Return JSON: {{"days": [{{"day": 1, "sessions": [{{"hour": 21, "minute": 5, "turns": [{{"role": "user"|"bot", "text": "..."}}]}}]}}]}}"""
 
 
@@ -41,6 +41,12 @@ def ask(client: genai.Client, prompt: str) -> dict:
         config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.9),
     )
     return json.loads(res.text)
+
+
+def make_client() -> genai.Client:
+    # The SDK retries overloads (503) and rate limits (429) with backoff; the free tier hits both.
+    retry = types.HttpRetryOptions(attempts=6, initial_delay=2, max_delay=60, http_status_codes=[429, 500, 503])
+    return genai.Client(api_key=config.GEMINI_API_KEY, http_options=types.HttpOptions(retry_options=retry))
 
 
 def stamp(turns: list[dict], start: int) -> list[dict]:
@@ -95,12 +101,13 @@ def main() -> None:
     ap.add_argument("--conversations", type=int, default=160)
     ap.add_argument("--arcs", type=int, default=25)
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--heldout", type=float, default=0.3, help="share of each label kept for the held-out split")
     args = ap.parse_args()
     if not config.GEMINI_API_KEY:
         raise SystemExit("Set GEMINI_API_KEY in .env")
 
     rng = random.Random(args.seed)
-    client = genai.Client(api_key=config.GEMINI_API_KEY)
+    client = make_client()
     scale = args.conversations / sum(CONV_TARGETS.values())
 
     convs, idx = [], 1
@@ -120,8 +127,8 @@ def main() -> None:
     # TODO: append the hand-written arc_demo (PHASE1.md §5.8) here.
     arcs += [a for a in read_jsonl(config.ARCS) if a["id"] == "arc_demo"]
 
-    split(convs, "gold", 50, rng)
-    split(arcs, "gold_final", 10, rng)
+    split(convs, "gold", round(args.heldout * len(convs)), rng)
+    split(arcs, "gold_final", round(args.heldout * len(arcs)), rng)
     write_jsonl(config.CONVERSATIONS, convs)
     write_jsonl(config.ARCS, arcs)
     for name, items, key in [("conversations", convs, "gold"), ("arcs", arcs, "gold_final")]:

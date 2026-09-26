@@ -47,13 +47,21 @@ def label_all(pairs: list[dict], rules_only: bool = False) -> dict[str, dict]:
     cache = {r["hash"]: r["labels"] for r in read_jsonl(config.LABELS_CACHE)} if not rules_only else {}
     todo = [p for p in pairs if _cache_key(p["user"], p["bot"]) not in cache]
     if todo:
-        args = ["label", "--rules-only"] if rules_only else ["label"]
+        # Concurrency 2 keeps the free tier under its per-minute limit.
+        args = ["label", "--rules-only"] if rules_only else ["label", "--concurrency", "2"]
         results = _run(args, [json.dumps(p) for p in todo])
-        new_rows = []
+        new_rows, fell_back = [], 0
         for p, r in zip(todo, results):
             h = _cache_key(p["user"], p["bot"])
             cache[h] = r["labels"]
+            # A "rules" label here means the Gemini call failed. Use it for this run but don't
+            # cache it, so a rerun asks Gemini again instead of freezing a degraded label.
+            if not rules_only and r["labels"]["source"] == "rules":
+                fell_back += 1
+                continue
             new_rows.append({"hash": h, "labels": r["labels"]})
+        if fell_back:
+            print(f"WARNING: {fell_back}/{len(todo)} labels fell back to rules (Gemini failed). Rerun to retry them.")
         if not rules_only:
             config.LABELS_CACHE.parent.mkdir(parents=True, exist_ok=True)
             with config.LABELS_CACHE.open("a") as f:
