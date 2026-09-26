@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Bridge</title>
+    <style>
+      body { font: 13px system-ui, sans-serif; width: 360px; margin: 12px; color: #1f2328; }
+      h1 { font-size: 15px; margin: 0 0 8px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 3px 4px; border-bottom: 1px solid #e5e7eb; }
+      th { font-weight: 600; color: #57606a; }
+      .empty { color: #57606a; }
+      button { margin-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>Bridge: captured turns</h1>
+    <p class="empty" id="empty">No turns yet. Chat on gemini.google.com.</p>
+    <table id="turns" hidden>
+      <thead><tr><th>Time</th><th>Role</th><th>Chars</th><th>Id</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <button id="reset">Reset all data</button>
+    <script src="popup.js"></script>
+  </body>
+</html>

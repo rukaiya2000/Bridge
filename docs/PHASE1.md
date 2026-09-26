@@ -860,4 +860,8 @@ Add entries here for any contract change, selector change, blocker or decision. 
 
 | Date/time | Who | Note |
 |---|---|---|
+| 2026-09-26 | Person1 | Real-page check on gemini.google.com (new chat, one question): user turn (11 chars) and bot turn (67 chars) captured once each, bot only after streaming ended. `user-query`, `model-response` and the stop-button selector work. Follow-up in the same chat also works (`user:1` / `bot:1`, same conversation id), and a 4,783-char streamed answer was captured once, after streaming ended. Not yet checked: reopening an old chat adds no rows |
+| 2026-09-26 | Person1 | Pairing fix for §4.6: in a new chat the user turn has `conversationId: "new"` and the bot reply has the real `/app/<id>`, because the URL changes after sending. Pair a bot turn with the pending user turn **from the same tab** (`sender.tab.id`), not by `conversationId` |
+| 2026-09-26 | Person1 | Gemini adapter built with **unverified** selectors (`extension/src/adapters/gemini.ts` → `SELECTORS`). Dedup approach: only the last `user-query` / `model-response` can be a new turn, a user turn counts only if the number of user messages grew, and one bot turn per user turn. Tested against a simulated page; still needs a real-page check |
+| 2026-09-26 | Person1 | Step 0 files created on `p1/extension`, copied verbatim from §3. Person2: if you also create them, keep them byte-identical so the merge is clean |
 | 2026-09-26 | – | Spec created |
