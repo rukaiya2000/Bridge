@@ -1,14 +1,20 @@
-import type { DayBucket, Level, Profile, ScoreResult, TurnLabels } from "./types.js";
+import type { DayBucket, Level, Profile, ScoreResult, Topic, TurnLabels } from "./types.js";
 import { dayKey, shiftDay } from "./time.js";
 import weights from "./weights.json" with { type: "json" };
 
-const EMOTIONAL = ["loneliness", "sadness", "anxiety", "self_worth"] as const;
+// Difficult feelings add to the weekly score (capped by weights.emotional). Stress, anger, happiness,
+// boredom and the areas of life (school, friends, ...) don't.
+export const EMOTIONAL = [
+  "loneliness", "sadness", "anxiety", "self_worth",
+  "hopelessness", "emptiness", "rejection", "guilt_shame", "overwhelm", "fear", "grief", "jealousy", "frustration",
+] as const satisfies readonly Topic[];
+// Heavy enough that one message on its own is worth a "watch".
+const WATCH_ALONE: readonly Topic[] = ["loneliness", "sadness", "self_worth", "hopelessness", "emptiness", "guilt_shame"];
 
 export function scoreSingle(l: TurnLabels): Level {
   if (l.crisis) return "crisis";
   if (l.dependency && (l.isolation || l.botHook)) return "concerning";
-  if (l.dependency || l.isolation || l.botHook ||
-      l.topics.some((t) => t === "loneliness" || t === "sadness" || t === "self_worth")) return "watch";
+  if (l.dependency || l.isolation || l.botHook || l.topics.some((t) => WATCH_ALONE.includes(t))) return "watch";
   return "healthy";
 }
 
@@ -52,7 +58,7 @@ export function scoreProfile(p: Profile, now: number, allProfiles?: Profile[]): 
     [w.dependency.weight * Math.min(dep, w.dependency.cap), `dependency language in ${dep} messages`],
     [w.isolation.weight * Math.min(iso, w.isolation.cap), `pulling away from people in ${iso} messages`],
     [w.botHook.weight * Math.min(hook, w.botHook.cap), `bot kept them talking in ${hook} messages`],
-    [w.emotional.weight * Math.min(emo, w.emotional.cap), `emotional topics in ${emo} messages`],
+    [w.emotional.weight * Math.min(emo, w.emotional.cap), `difficult feelings in ${emo} messages`],
     [activeDays >= w.lateNight.minActiveDays ? w.lateNight.weight * lateShare : 0, `${Math.round(lateShare * 100)}% of messages after 11pm`],
     [w.streak.weight * Math.max(0, streak - w.streak.freeDays), `${streak} days in a row`],
     [siteShare >= w.siteShare.minShare && activeDays >= w.siteShare.minActiveDays ? w.siteShare.bonus : 0, "most AI time on this one bot"],

@@ -6,9 +6,11 @@ export type Role = "user" | "bot";
 
 export const LEVELS: readonly Level[] = ["healthy", "watch", "concerning", "crisis"];
 
-// Topics that may be shown to parents (as counts only).
+// Topics that may be shown to parents (as counts only): feelings first, then areas of life.
 export const TOPICS = [
   "loneliness", "sadness", "stress", "anxiety", "anger", "self_worth",
+  "hopelessness", "emptiness", "rejection", "guilt_shame", "overwhelm", "fear", "grief", "jealousy", "frustration",
+  "happiness",
   "school", "friends", "family", "romance", "body_image", "boredom", "other",
 ] as const;
 export type Topic = (typeof TOPICS)[number];

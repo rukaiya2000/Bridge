@@ -1,20 +1,34 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ActionIcon, AppShell, Avatar, Badge, Box, Burger, Center, Code, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text,
   ThemeIcon, Title, Tooltip, useComputedColorScheme, useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconApps, IconChartBar, IconHeartHandshake, IconLayoutDashboard, IconMoon, IconShieldLock, IconSun } from "@tabler/icons-react";
-import { API_URL, fetchRatings, fetchTopics, fetchWeek, fetchWeeks } from "./api";
+import { IconApps, IconChartBar, IconHeartHandshake, IconLayoutDashboard, IconLogout, IconMoon, IconShieldLock, IconSun } from "@tabler/icons-react";
+import { API_URL, LoggedOut, fetchRatings, fetchTopics, fetchWeek, fetchWeeks, loadSession, logOut, saveSession, type Session } from "./api";
 import { formatWeek, previousWeek } from "./format";
+import { Login } from "./Login";
 import { HoursChart, Privacy, Stats, Tools, TopicsChart } from "./sections";
 
 const CHILD_ID = "demo";
 const REFRESH_MS = 15_000;
-const SEED = "for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/$f.json; done";
+const seed = (token: string) =>
+  `for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'authorization: Bearer ${token}' -H 'content-type: application/json' --data @api/fixtures/$f.json; done`;
 
 export function App() {
+  const [session, setSession] = useState(loadSession);
+  const queryClient = useQueryClient();
+  const loggedIn = (s: Session | null) => {
+    queryClient.clear(); // never show the previous account's cached data
+    saveSession(s);
+    setSession(s);
+  };
+  if (!session) return <Login onLoggedIn={loggedIn} />;
+  return <Dashboard key={session.token} session={session} onLogout={() => void logOut().then(() => loggedIn(null))} />;
+}
+
+function Dashboard({ session, onLogout }: { session: Session; onLogout: () => void }) {
   const [navOpen, nav] = useDisclosure();
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -27,13 +41,15 @@ export function App() {
   const ratings = useQuery({ queryKey: ["ratings"], queryFn: fetchRatings, staleTime: Infinity });
 
   const failed = [weeks, week, topics, ratings].some((q) => q.isError);
+  const expired = [weeks, week, topics].some((q) => q.error instanceof LoggedOut);
+  useEffect(() => { if (expired) onLogout(); }, [expired, onLogout]);
   const ready = week.data && topics.data && ratings.data;
 
   let body;
   if (failed) {
     body = <Notice title="Can't reach the Bridge API" text={`Nothing answered at ${API_URL}. Start it with:`} code="uv run --group api uvicorn api.main:app --reload" />;
   } else if (weeks.data?.length === 0) {
-    body = <Notice title="No data yet" text="The API is connected, but nothing has been synced. Load the demo weeks with:" code={SEED} />;
+    body = <Notice title="No data yet" text="You're logged in, but nothing has been synced to this account yet. Log in to the extension's Options page with the same account, or load the demo weeks from the repo root with:" code={seed(session.token)} />;
   } else if (!ready) {
     body = <Center h={400}><Loader /></Center>;
   } else {
@@ -75,6 +91,9 @@ export function App() {
                 data={weeks.data.map((w) => ({ value: w, label: formatWeek(w) }))} />
             )}
             <ColorSchemeToggle />
+            <Tooltip label={`Log out ${session.email}`}>
+              <ActionIcon variant="default" size="lg" aria-label="Log out" onClick={onLogout}><IconLogout size={18} /></ActionIcon>
+            </Tooltip>
           </Group>
         </Group>
       </AppShell.Header>
@@ -95,7 +114,7 @@ export function App() {
               <Avatar color="indigo" radius="xl">DT</Avatar>
               <div>
                 <Text size="sm" fw={600}>Demo teen</Text>
-                <Text size="xs" c="dimmed">Extension on</Text>
+                <Text size="xs" c="dimmed" truncate maw={160}>{session.email}</Text>
               </div>
             </Group>
           </Paper>

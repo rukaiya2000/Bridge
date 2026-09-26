@@ -16,6 +16,18 @@
 <body>
   <h1>Bridge</h1>
   <section>
+    <h2>Account</h2>
+    <p>Log in with the same account as the parent dashboard. Each account only sees its own data.</p>
+    <div id="logged-out">
+      <label for="email">Email</label>
+      <input id="email" type="text" autocomplete="email" />
+      <label for="password">Password (at least 8 characters)</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <p><button id="login">Log in</button> <button id="signup">Create account</button> <span id="auth-out"></span></p>
+    </div>
+    <p id="logged-in" hidden>Logged in as <b id="who"></b> <button id="logout">Log out</button></p>
+  </section>
+  <section>
     <h2>Settings</h2>
     <p>Messages are labeled by UF Navigator. Crisis and abuse rules always run on-device.</p>
     <label for="llm-key">UF Navigator API key (local dev only)</label>
@@ -30,7 +42,7 @@
     <label for="api">Sync API URL</label>
     <input id="api" type="text" />
     <p class="note">This browser's device ID: <code id="device">…</code>. All devices with the same Child ID are added up on the dashboard.</p>
-    <label for="child">Child ID (the dashboard shows "demo")</label>
+    <label for="child">Child ID (the dashboard shows "demo" in your account)</label>
     <input id="child" type="text" />
     <button id="save">Save</button> <span id="saved"></span>
     <p><button id="sync">Sync now</button> <span id="sync-out"></span></p>

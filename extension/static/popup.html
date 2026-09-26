@@ -4,27 +4,127 @@
   <meta charset="utf-8" />
   <title>Bridge</title>
   <style>
-    body { font: 13px system-ui, sans-serif; width: 340px; margin: 12px; color: #1f2933; }
-    h1 { font-size: 15px; margin: 0 0 8px; }
-    h2 { font-size: 13px; margin: 12px 0 4px; }
-    .site { border: 1px solid #e4e7eb; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
-    .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; color: #fff; font-weight: 600; }
-    .healthy { background: #2f855a; } .watch { background: #b7791f; }
-    .concerning { background: #c05621; } .crisis { background: #6b46c1; }
-    ul { margin: 4px 0; padding-left: 18px; }
-    .muted { color: #7b8794; }
-    button { margin-top: 8px; }
+    :root {
+      --bg: #f6f7fb; --card: #ffffff; --text: #1f2933; --muted: #6b7785; --line: #e6e9f0;
+      --accent: #5b5bd6; --accent-soft: #ecebff;
+      --warn-bg: #fff4e6; --warn-line: #f0b37e; --warn-text: #8a3b0c;
+      --difficult: #fdecef; --difficult-text: #a3243b;
+      --positive: #e6f7ee; --positive-text: #1d6b43;
+      --neutral: #fff5e0; --neutral-text: #875a00;
+      --life: #eef2f7; --life-text: #3e4c5e;
+      --healthy: #2f855a; --watch: #b7791f; --concerning: #c05621; --crisis: #6b46c1;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16171d; --card: #1f2029; --text: #e7e9ee; --muted: #9aa3b1; --line: #2e303b;
+        --accent: #8f8ff0; --accent-soft: #2b2b4a;
+        --warn-bg: #3a2616; --warn-line: #8a5020; --warn-text: #f5c9a3;
+        --difficult: #3b1d25; --difficult-text: #f4a8b7;
+        --positive: #173226; --positive-text: #93dbb3;
+        --neutral: #37301a; --neutral-text: #eccb7f;
+        --life: #262a33; --life-text: #c3cbd6;
+      }
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; width: 360px; margin: 0; background: var(--bg); color: var(--text); }
+    header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--card); border-bottom: 1px solid var(--line); }
+    .logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #fff; font-weight: 800;
+      background: linear-gradient(135deg, #5b5bd6, #8b5cf6); }
+    header h1 { font-size: 15px; margin: 0; }
+    header .tag { font-size: 11px; color: var(--muted); }
+    header .pill { margin-left: auto; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--positive); color: var(--positive-text); }
+    header .pill.off { background: var(--warn-bg); color: var(--warn-text); }
+    main { padding: 10px 12px 4px; display: grid; gap: 10px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; font-weight: 700; }
+    .alert { display: flex; align-items: center; gap: 8px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-text);
+      border-radius: 12px; padding: 8px 10px; }
+    .alert span { flex: 1; }
+    button { font: inherit; font-weight: 600; border-radius: 8px; padding: 5px 10px; cursor: pointer;
+      border: 1px solid var(--line); background: var(--card); color: var(--text); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:hover { filter: brightness(.96); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .chip .n { opacity: .75; font-weight: 700; }
+    .chip.difficult { background: var(--difficult); color: var(--difficult-text); }
+    .chip.positive { background: var(--positive); color: var(--positive-text); }
+    .chip.neutral { background: var(--neutral); color: var(--neutral-text); }
+    .chip.life { background: var(--life); color: var(--life-text); }
+    .chip.flag { background: var(--accent-soft); color: var(--accent); }
+    .chip.flag.crisis { background: var(--crisis); color: #fff; }
+    .empty { color: var(--muted); }
+    .legend { display: flex; gap: 10px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+    .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+    ul.feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    ul.feed li { display: grid; gap: 4px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+    ul.feed li:last-child { border-bottom: 0; padding-bottom: 0; }
+    .meta { font-size: 11px; color: var(--muted); display: flex; gap: 6px; }
+    .meta .rules { color: var(--warn-text); }
+    .site { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+    .site:last-child { border-bottom: 0; }
+    .site b { text-transform: capitalize; }
+    .level { justify-self: end; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .level.healthy { background: var(--healthy); } .level.watch { background: var(--watch); }
+    .level.concerning { background: var(--concerning); } .level.crisis { background: var(--crisis); }
+    .site .sub { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+    footer { padding: 8px 12px 12px; display: grid; gap: 8px; }
+    footer .row { display: flex; gap: 6px; }
+    footer .row button:last-child { margin-left: auto; }
+    #sync { font-size: 11px; color: var(--muted); }
+    details { font-size: 11px; color: var(--muted); }
+    details summary { cursor: pointer; }
   </style>
 </head>
 <body>
-  <h1>Bridge debug</h1>
-  <p id="sync" class="muted"></p>
-  <button id="sync-now">Sync now</button>
-  <div id="sites"></div>
-  <h2>Recent labels</h2>
-  <ul id="labels"></ul>
-  <p id="sync" class="muted"></p>
-  <button id="reset">Reset all data</button>
+  <header>
+    <div class="logo">B</div>
+    <div>
+      <h1>Bridge</h1>
+      <div class="tag">Topics, not words</div>
+    </div>
+    <span id="status-pill" class="pill">On</span>
+  </header>
+
+  <main>
+    <div id="account" class="alert" hidden><span id="account-text"></span><button id="account-btn" class="primary">Log in</button></div>
+    <div id="labeling" class="alert" hidden><span id="labeling-text"></span><button id="labeling-btn">Options</button></div>
+
+    <section class="card">
+      <h2>Feelings today</h2>
+      <div id="today" class="chips"></div>
+      <div class="legend">
+        <span><i style="background: var(--difficult-text)"></i>Difficult</span>
+        <span><i style="background: var(--neutral-text)"></i>Everyday</span>
+        <span><i style="background: var(--positive-text)"></i>Positive</span>
+        <span><i style="background: var(--life-text)"></i>Life areas</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Recent messages</h2>
+      <ul id="feed" class="feed"></ul>
+    </section>
+
+    <section class="card">
+      <h2>This week by site</h2>
+      <div id="sites"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div id="sync"></div>
+    <div class="row">
+      <button id="sync-now">Sync now</button>
+      <button id="options">Options</button>
+      <button id="reset" title="Deletes this browser's Bridge data (not the account)">Reset data</button>
+    </div>
+    <details>
+      <summary>What does Bridge share?</summary>
+      Only which feelings and topics came up, when, and for how long. Your parent never sees your words.
+    </details>
+  </footer>
   <script src="popup.js"></script>
 </body>
 </html>

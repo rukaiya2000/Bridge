@@ -11,7 +11,7 @@ export interface Settings {
   nudgesEnabled: boolean;
   spokenNudges: boolean; // feature 8
   apiUrl: string;        // sync API (api/main.py)
-  childId: string;       // which child the parent dashboard shows ("demo" by default)
+  childId: string;       // which child the parent dashboard shows ("demo" by default), within the account
   privacyStrict: boolean; // true: personal info can't be sent at all (no "send anyway")
 }
 
@@ -34,6 +34,8 @@ export interface Store {
   // Random id for this browser install. Several devices can share one childId; the API adds them up.
   // Its own key, not in settings, so saving the options page never replaces it.
   device: { id: string } | null;
+  // Bridge account this browser syncs to (api/auth.py). Its own key so saving settings never logs out.
+  auth: { token: string; email: string } | null;
   syncStatus: { at: number; ok: boolean; message: string } | null;
 }
 
@@ -52,6 +54,7 @@ export const DEFAULTS: Store = {
   nudgeLog: {},
   privacyLog: {},
   device: null,
+  auth: null,
   syncStatus: null,
 };
 

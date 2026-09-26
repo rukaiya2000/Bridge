@@ -4,13 +4,16 @@ didn't define, so message text can't slip in by accident."""
 from datetime import date, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 Site = Literal["chatgpt", "claude", "characterai", "gemini"]
 Level = Literal["healthy", "watch", "concerning", "crisis"]
-# Parent-visible topics only. Excluded topics are dropped in the extension's aggregator before sync.
+# Parent-visible topics only (same list as TOPICS in core/src/types.ts). Excluded topics are dropped in
+# the extension's aggregator before sync.
 Topic = Literal[
     "loneliness", "sadness", "stress", "anxiety", "anger", "self_worth",
+    "hopelessness", "emptiness", "rejection", "guilt_shame", "overwhelm", "fear", "grief", "jealousy", "frustration",
+    "happiness",
     "school", "friends", "family", "romance", "body_image", "boredom", "other",
 ]
 
@@ -80,6 +83,20 @@ class Starter(Strict):
     """Vetted conversation starter (desc.md feature 2). `topic` is a Topic or "default"."""
     topic: Topic | Literal["default"]
     text: str
+
+
+class Credentials(Strict):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginResult(Strict):
+    token: str  # send as "Authorization: Bearer <token>"
+    email: str
+
+
+class Me(Strict):
+    email: str
 
 
 class WeekSummary(Strict):

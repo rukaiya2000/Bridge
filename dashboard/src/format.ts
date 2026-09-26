@@ -3,7 +3,7 @@ import type { Level, SiteAggregate } from "./api";
 
 export const isLate = (hour: number) => hour >= 23 || hour < 5;
 
-const TOPIC_LABELS: Record<string, string> = { self_worth: "Self-worth", body_image: "Body image" };
+const TOPIC_LABELS: Record<string, string> = { self_worth: "Self-worth", body_image: "Body image", guilt_shame: "Guilt / shame" };
 export const topicLabel = (t: string) => TOPIC_LABELS[t] ?? t[0].toUpperCase() + t.slice(1);
 
 export const LEVEL_COLOR: Record<Level, string> = { healthy: "teal", watch: "yellow", concerning: "orange", crisis: "grape" };

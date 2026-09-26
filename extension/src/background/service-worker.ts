@@ -37,6 +37,25 @@ chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "sync") void syncNow();
 });
 
+// ---- account: nothing syncs until someone logs in, so make that hard to miss ----
+
+// First install opens the Options page, where the Account section is at the top.
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason === chrome.runtime.OnInstalledReason.INSTALL && !(await store.get("auth"))) {
+    void chrome.runtime.openOptionsPage();
+  }
+});
+
+// A "!" on the toolbar icon while logged out.
+async function showLoginBadge() {
+  const loggedIn = !!(await store.get("auth"));
+  await chrome.action.setBadgeText({ text: loggedIn ? "" : "!" });
+  await chrome.action.setBadgeBackgroundColor({ color: "#c05621" });
+  await chrome.action.setTitle({ title: loggedIn ? "Bridge" : "Bridge: log in to sync" });
+}
+void showLoginBadge();
+chrome.storage.onChanged.addListener((changes) => { if (changes.auth) void showLoginBadge(); });
+
 chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   const tabId = sender.tab?.id;
   if (msg.type === "turn") void onTurn(msg.turn, tabId);
@@ -88,6 +107,11 @@ async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefin
   const labels = await core.labelTurn(clean(user)!, clean(bot), store.labelOptions(settings));
   // Labels only, never the text (open the service worker's DevTools from chrome://extensions to see these).
   console.info(`[Bridge] labeled ${user.site} turn via ${labels.source}:`, labels);
+  if (labels.source === "rules") {
+    console.warn(settings.llmKey
+      ? "[Bridge] Navigator failed for this turn, so only crisis/abuse rules ran (see the llm failed line above for the status)"
+      : "[Bridge] no UF Navigator key on the Options page, so only crisis/abuse rules ran: feelings and topics are not detected");
+  }
   if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
   await locked(() => recordTurn(user, labels, tabId));
 }
@@ -265,29 +289,33 @@ async function doSync() {
 }
 
 async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus"]>> {
-  const { settings, payload } = await locked(async () => {
-    const [settings, profiles, hourly, voice, nudgeLog, privacyLog] = await Promise.all([
-      store.get("settings"), store.get("profiles"), store.get("hourly"), store.get("voice"), store.get("nudgeLog"),
+  const { settings, auth, payload } = await locked(async () => {
+    const [settings, auth, profiles, hourly, voice, nudgeLog, privacyLog] = await Promise.all([
+      store.get("settings"), store.get("auth"), store.get("profiles"), store.get("hourly"), store.get("voice"), store.get("nudgeLog"),
       store.get("privacyLog"),
     ]);
     const payload = buildPayload({
       childId: settings.childId, deviceId: await store.deviceId(), now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog, privacy: privacyLog,
     });
-    return { settings, payload };
+    return { settings, auth, payload };
   });
   let status: NonNullable<store.Store["syncStatus"]>;
   console.info(`[Bridge] sync payload for ${payload.child_id}, week of ${payload.week_start}:`, payload);
-  if (!payload.sites.length) {
+  if (!auth) {
+    status = { at: now, ok: false, message: "not logged in: log in on the Options page to sync" };
+  } else if (!payload.sites.length) {
     status = { at: now, ok: true, message: "nothing to sync yet this week" };
   } else {
     try {
       const res = await fetch(`${settings.apiUrl.replace(/\/+$/, "")}/sync`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", authorization: `Bearer ${auth.token}` },
         body: JSON.stringify(payload),
       });
       status = res.ok
-        ? { at: now, ok: true, message: `synced week of ${payload.week_start} (${payload.sites.length} sites)` }
+        ? { at: now, ok: true, message: `synced week of ${payload.week_start} (${payload.sites.length} sites) to ${auth.email}` }
+        : res.status === 401
+        ? { at: now, ok: false, message: "login expired: log in again on the Options page" }
         : { at: now, ok: false, message: `API ${res.status}: ${(await res.text()).slice(0, 200)}` };
     } catch (e) {
       status = { at: now, ok: false, message: `API unreachable at ${settings.apiUrl} (${String(e)})` };

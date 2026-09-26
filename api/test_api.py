@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pymongo.errors import WriteError
 
+from api.conftest import log_in
 from api.main import app
 
 # Same file the dashboard falls back to and the README's seed command posts.
@@ -25,7 +26,7 @@ def test_sync_roundtrip(client):
 
 def test_data_survives_restart(client):
     client.post("/sync", json=PAYLOAD)
-    with TestClient(app) as restarted:
+    with TestClient(app, headers=client.headers) as restarted:
         assert restarted.get(WEEK).status_code == 200
 
 
@@ -73,7 +74,7 @@ def test_rejects_topics_outside_the_week(client):
 
 
 def test_database_rejects_text_even_without_the_api(client):
-    doc = {"child_id": "demo", "week_start": "2026-09-01", "site": "gemini", "level": "watch",
+    doc = {"account_id": "a", "child_id": "demo", "device_id": "d", "week_start": "2026-09-01", "site": "gemini", "level": "watch",
            "score": 1.0, "synced_at": datetime.now(timezone.utc), "text": "a message"}
     with pytest.raises(WriteError):
         app.state.db.weekly_aggregates.insert_one(doc)
@@ -147,3 +148,46 @@ def test_hourly_topics_from_devices_add_up(client):
     trend = client.get("/children/teen/weeks/2026-09-01/topics").json()
     assert trend[0]["this_week"] == 5
 
+
+
+def test_data_needs_a_login(anon):
+    assert anon.post("/sync", json=PAYLOAD).status_code == 401
+    assert anon.get("/children/demo/weeks").status_code == 401
+    assert anon.get("/children/demo/weeks", headers={"authorization": "Bearer made-up"}).status_code == 401
+    assert anon.get("/tools/ratings").status_code == 200  # curated, not personal
+
+
+def test_testers_with_the_same_child_id_dont_share_data(anon):
+    alice = log_in(anon, "alice@example.com").headers["authorization"]
+    bob = log_in(anon, "bob@example.com").headers["authorization"]
+    anon.post("/sync", json=PAYLOAD, headers={"authorization": alice})
+    assert anon.get(WEEK, headers={"authorization": alice}).status_code == 200
+    assert anon.get(WEEK, headers={"authorization": bob}).status_code == 404
+    assert anon.get("/children/demo/weeks", headers={"authorization": bob}).json() == []
+    assert anon.get(WEEK + "/topics", headers={"authorization": bob}).json() == []
+
+
+def test_signup_login_logout(anon):
+    creds = {"email": "Parent@Example.com", "password": "correct horse"}
+    assert anon.post("/auth/signup", json=creds).status_code == 200
+    assert anon.post("/auth/signup", json=creds).status_code == 409
+    assert anon.post("/auth/login", json={**creds, "password": "wrong horse"}).status_code == 401
+    assert anon.post("/auth/login", json={**creds, "email": "nobody@example.com"}).status_code == 401
+    token = anon.post("/auth/login", json={**creds, "email": "parent@example.com"}).json()["token"]
+    headers = {"authorization": f"Bearer {token}"}
+    assert anon.get("/auth/me", headers=headers).json() == {"email": "parent@example.com"}
+    anon.post("/auth/logout", headers=headers)
+    assert anon.get("/auth/me", headers=headers).status_code == 401
+
+
+def test_passwords_are_hashed(client):
+    stored = app.state.db.accounts.find_one({"email": "tester@example.com"})
+    assert "correct horse" not in str(stored) and stored["password_hash"].startswith("$argon2")
+
+
+def test_new_feelings_sync(client):
+    feelings = ["hopelessness", "emptiness", "rejection", "guilt_shame", "overwhelm", "fear", "grief", "jealousy",
+                "frustration", "happiness"]
+    week = {**PAYLOAD, "hourly_topics": [{"date": "2026-09-02", "hour": 20, "topic": f, "count": 1} for f in feelings]}
+    assert client.post("/sync", json=week).status_code == 200
+    assert {t["topic"] for t in client.get(WEEK + "/topics").json()} == set(feelings)

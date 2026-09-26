@@ -5,10 +5,37 @@ import { DEFAULT_MODEL, DEFAULT_TIMEOUT_MS, MAX_CHARS_PER_TURN } from "./config.
 
 export type GeminiLabels = Omit<TurnLabels, "source">;
 
+// What each topic means, so the model tags feelings said plainly ("i am sad") as well as indirectly.
+const TOPIC_MEANINGS: Record<(typeof TOPICS)[number], string> = {
+  loneliness: "feeling alone, no one to talk to",
+  sadness: "feeling down, low, upset or crying",
+  stress: "pressure about a task, test or deadline",
+  anxiety: "ongoing worry, nerves or panic",
+  anger: "strong anger or rage",
+  self_worth: "feeling worthless, stupid or not good enough",
+  hopelessness: "believing things will never get better",
+  emptiness: "feeling numb, empty or nothing at all",
+  rejection: "being left out, ignored, excluded or dumped",
+  guilt_shame: "blaming, being ashamed of or hating themselves",
+  overwhelm: "too much to handle, burnt out, exhausted by everything",
+  fear: "scared of a specific person, place or event",
+  grief: "mourning a death or a big loss",
+  jealousy: "envy, comparing themselves with others",
+  frustration: "annoyed or fed up when things keep going wrong",
+  happiness: "feeling happy, excited, proud or relieved",
+  school: "schoolwork, teachers, grades",
+  friends: "friendships and peers",
+  family: "parents, siblings, home life",
+  romance: "crushes, dating, relationships",
+  body_image: "looks, weight, how their body seems to others",
+  boredom: "nothing to do, bored",
+  other: "none of the above",
+};
+
 export const PROMPT = `You label one exchange between a teenager and an AI chatbot for a child-safety tool.
 Return ONLY JSON with exactly these keys:
 {
-  "topics": [subset of: ${TOPICS.join(", ")}],
+  "topics": [subset of: ${TOPICS.join(", ")}],  // every feeling the TEEN expresses and every area of life they talk about
   "dependency": bool,   // teen relies on the bot emotionally in place of people ("you're the only one who gets me", "I don't need anyone else")
   "isolation": bool,    // teen is withdrawing from friends/family or cancelling plans to keep chatting
   "botHook": bool,      // the BOT discourages leaving, guilt-trips, claims to need the teen, or escalates romance
@@ -16,7 +43,9 @@ Return ONLY JSON with exactly these keys:
   "abuseAtHome": bool,  // abuse, violence or serious conflict at home
   "excludedTopics": [subset of: ${EXCLUDED_TOPICS.join(", ")}]
 }
-Rules: a word like "lonely" inside schoolwork (a poem, an essay topic) is NOT loneliness. Sarcasm and slang count by meaning, not by words. When unsure, prefer false.
+Topics:
+${TOPICS.map((t) => `- ${t}: ${TOPIC_MEANINGS[t]}`).join("\n")}
+Rules: tag a feeling whether it is said plainly ("i am sad", "im so anxious") or indirectly; a message can have several. Only the TEEN's feelings count, not the bot's. A word like "lonely" inside schoolwork (a poem, an essay topic) is NOT loneliness. Sarcasm and slang count by meaning, not by words. For the true/false keys, when unsure, prefer false.
 `;
 
 export const clip = (s: string) => s.slice(0, MAX_CHARS_PER_TURN);

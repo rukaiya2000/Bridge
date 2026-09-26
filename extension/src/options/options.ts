@@ -20,6 +20,51 @@ async function loadSettings() {
   $("device").textContent = await store.deviceId();
 }
 
+// ---- account (api/auth.py). Log in with the settings' API URL, so save a changed URL first. ----
+
+async function showAuth() {
+  const auth = await store.get("auth");
+  $("logged-out").hidden = !!auth;
+  $("logged-in").hidden = !auth;
+  $("who").textContent = auth?.email ?? "";
+}
+
+async function authRequest(path: "login" | "signup") {
+  const { apiUrl } = await store.get("settings");
+  const email = $<HTMLInputElement>("email").value.trim();
+  const password = $<HTMLInputElement>("password").value;
+  $("auth-out").textContent = "…";
+  try {
+    const res = await fetch(`${apiUrl.replace(/\/+$/, "")}/auth/${path}`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      $("auth-out").textContent = typeof body.detail === "string" ? body.detail : "Enter a valid email and a password of at least 8 characters";
+      return;
+    }
+    await store.set("auth", { token: body.token, email: body.email });
+    $<HTMLInputElement>("password").value = "";
+    $("auth-out").textContent = "";
+    await showAuth();
+    const msg: ToWorker = { type: "sync-now" };
+    void chrome.runtime.sendMessage(msg).catch(() => {});
+  } catch (e) {
+    $("auth-out").textContent = `API unreachable at ${apiUrl} (${String(e)})`;
+  }
+}
+
+$("login").addEventListener("click", () => void authRequest("login"));
+$("signup").addEventListener("click", () => void authRequest("signup"));
+$("logout").addEventListener("click", async () => {
+  const [{ apiUrl }, auth] = await Promise.all([store.get("settings"), store.get("auth")]);
+  if (auth) {
+    await fetch(`${apiUrl.replace(/\/+$/, "")}/auth/logout`, { method: "POST", headers: { authorization: `Bearer ${auth.token}` } }).catch(() => {});
+  }
+  await store.set("auth", null);
+  await showAuth();
+});
+
 $("save").addEventListener("click", async () => {
   await store.set("settings", {
     llmBaseUrl: $<HTMLInputElement>("llm-url").value.trim() || store.DEFAULTS.settings.llmBaseUrl,
@@ -90,4 +135,5 @@ $("replay").addEventListener("click", async () => {
 });
 
 void loadSettings();
+void showAuth();
 void loadArcs();

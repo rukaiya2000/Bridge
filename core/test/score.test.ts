@@ -56,3 +56,25 @@ describe("scoreSingle", () => {
     expect(scoreSingle(l)).toBe(level);
   });
 });
+
+describe("feelings", () => {
+  it("heavy feelings are a watch on their own; everyday and positive ones are not", () => {
+    for (const t of ["sadness", "hopelessness", "emptiness", "guilt_shame"] as const) {
+      expect(scoreSingle(labels({ topics: [t] }))).toBe("watch");
+    }
+    for (const t of ["happiness", "boredom", "stress", "frustration", "school"] as const) {
+      expect(scoreSingle(labels({ topics: [t] }))).toBe("healthy");
+    }
+  });
+
+  it("new difficult feelings add to the weekly score, happiness doesn't", () => {
+    const week = (topic: "grief" | "happiness") => {
+      let p = emptyProfile("gemini");
+      for (let i = 0; i < 6; i++) p = updateProfile(p, labels({ topics: [topic] }), BASE + i * 3600_000);
+      return scoreProfile(p, BASE + 7 * 3600_000);
+    };
+    expect(week("grief").score).toBeGreaterThan(0);
+    expect(week("grief").reasons).toContain("difficult feelings in 6 messages");
+    expect(week("happiness").score).toBe(0);
+  });
+});

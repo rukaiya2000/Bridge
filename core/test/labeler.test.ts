@@ -89,3 +89,14 @@ describe("labelTurn via an OpenAI-compatible API", () => {
     expect(l.crisis).toBe(true);
   });
 });
+
+describe("new feelings", () => {
+  it("keeps every feeling the model returns, and the prompt explains each one", async () => {
+    const feelings = ["hopelessness", "emptiness", "rejection", "guilt_shame", "overwhelm", "fear", "grief", "jealousy", "frustration", "happiness"];
+    const reply = JSON.stringify({ topics: feelings, dependency: false, isolation: false, botHook: false, crisis: false, abuseAtHome: false, excludedTopics: [] });
+    const l = await labelTurn(turn("..."), null, { geminiKey: "k", fetchImpl: geminiReply(reply) });
+    expect(l.topics).toEqual(feelings);
+    const { PROMPT } = await import("../src/gemini.js");
+    for (const f of feelings) expect(PROMPT).toContain(`- ${f}: `);
+  });
+});

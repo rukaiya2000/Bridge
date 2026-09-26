@@ -27,10 +27,22 @@ def mongo_uri():
 
 
 @pytest.fixture
-def client(mongo_uri):
-    """Starts the app (runs the lifespan, so the schema exists) on an emptied database."""
+def anon(mongo_uri):
+    """Starts the app (runs the lifespan, so the schema exists) on an emptied database, logged out."""
     with TestClient(app) as c:
         db = app.state.db
-        db.weekly_aggregates.delete_many({})
-        db.hourly_topics.delete_many({})
+        for name in ("weekly_aggregates", "hourly_topics", "accounts", "sessions"):
+            db[name].delete_many({})
         yield c
+
+
+def log_in(c: TestClient, email: str) -> TestClient:
+    res = c.post("/auth/signup", json={"email": email, "password": "correct horse"})
+    c.headers["authorization"] = f"Bearer {res.json()['token']}"
+    return c
+
+
+@pytest.fixture
+def client(anon):
+    """Like anon, but signed up and logged in as one tester."""
+    return log_in(anon, "tester@example.com")

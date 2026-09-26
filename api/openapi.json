@@ -25,6 +25,130 @@
         }
       }
     },
+    "/auth/signup": {
+      "post": {
+        "summary": "Signup",
+        "operationId": "signup_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Logout Auth Logout Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Me",
+        "operationId": "me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/sync": {
       "post": {
         "summary": "Sync",
@@ -62,7 +186,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/children/{child_id}/weeks": {
@@ -70,6 +199,11 @@
         "summary": "Weeks",
         "description": "Week starts with data, newest first.",
         "operationId": "weeks_children__child_id__weeks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "child_id",
@@ -113,6 +247,11 @@
       "get": {
         "summary": "Week",
         "operationId": "week_children__child_id__weeks__week_start__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "child_id",
@@ -163,6 +302,11 @@
         "summary": "Topics",
         "description": "Per-topic counts this week vs last week, most frequent first.",
         "operationId": "topics_children__child_id__weeks__week_start__topics_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "child_id",
@@ -259,6 +403,28 @@
   },
   "components": {
     "schemas": {
+      "Credentials": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "Credentials"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -294,6 +460,16 @@
               "anxiety",
               "anger",
               "self_worth",
+              "hopelessness",
+              "emptiness",
+              "rejection",
+              "guilt_shame",
+              "overwhelm",
+              "fear",
+              "grief",
+              "jealousy",
+              "frustration",
+              "happiness",
               "school",
               "friends",
               "family",
@@ -319,6 +495,39 @@
           "count"
         ],
         "title": "HourlyTopicCount"
+      },
+      "LoginResult": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "email"
+        ],
+        "title": "LoginResult"
+      },
+      "Me": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "Me"
       },
       "SiteAggregate": {
         "properties": {
@@ -410,6 +619,16 @@
                   "anxiety",
                   "anger",
                   "self_worth",
+                  "hopelessness",
+                  "emptiness",
+                  "rejection",
+                  "guilt_shame",
+                  "overwhelm",
+                  "fear",
+                  "grief",
+                  "jealousy",
+                  "frustration",
+                  "happiness",
                   "school",
                   "friends",
                   "family",
@@ -550,6 +769,16 @@
               "anxiety",
               "anger",
               "self_worth",
+              "hopelessness",
+              "emptiness",
+              "rejection",
+              "guilt_shame",
+              "overwhelm",
+              "fear",
+              "grief",
+              "jealousy",
+              "frustration",
+              "happiness",
               "school",
               "friends",
               "family",
@@ -665,6 +894,12 @@
         ],
         "title": "WeekSummary",
         "description": "A child's week as the parent sees it: every device added up (api/db.py load_week)."
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }
