@@ -5,7 +5,7 @@ import { DEFAULT_MODEL, DEFAULT_TIMEOUT_MS, MAX_CHARS_PER_TURN } from "./config.
 
 export type GeminiLabels = Omit<TurnLabels, "source">;
 
-const PROMPT = `You label one exchange between a teenager and an AI chatbot for a child-safety tool.
+export const PROMPT = `You label one exchange between a teenager and an AI chatbot for a child-safety tool.
 Return ONLY JSON with exactly these keys:
 {
   "topics": [subset of: ${TOPICS.join(", ")}],
@@ -19,12 +19,12 @@ Return ONLY JSON with exactly these keys:
 Rules: a word like "lonely" inside schoolwork (a poem, an essay topic) is NOT loneliness. Sarcasm and slang count by meaning, not by words. When unsure, prefer false.
 `;
 
-const clip = (s: string) => s.slice(0, MAX_CHARS_PER_TURN);
+export const clip = (s: string) => s.slice(0, MAX_CHARS_PER_TURN);
 
 // Returns null on any failure so the caller falls back to rules. Never logs text.
 // Gemini often answers 503 ("high demand") or 429 for a moment; those are retried with backoff.
-const RETRIES = 2;
-const RETRYABLE = (status: number) => status === 429 || status >= 500;
+export const RETRIES = 2;
+export const RETRYABLE = (status: number) => status === 429 || status >= 500;
 
 // Returns null on any failure so the caller falls back to rules. Never logs text.
 export async function geminiLabel(

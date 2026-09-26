@@ -1,79 +1,18 @@
 // Dashboard sections. Layout, cards and charts come from Mantine; this file only arranges our data.
 import type { ReactNode } from "react";
 import {
-  Avatar, Badge, Blockquote, Box, Card, CopyButton, Grid, Group, List, Paper, SimpleGrid, Stack, Text, ThemeIcon, Title, Tooltip, ActionIcon,
+  Avatar, Badge, Box, Card, Group, List, Paper, SimpleGrid, Text, ThemeIcon, Title,
 } from "@mantine/core";
 import { BarChart } from "@mantine/charts";
 import {
-  IconArrowDownRight, IconArrowUpRight, IconBell, IconBulb, IconCheck, IconClock, IconCopy, IconEye, IconEyeOff,
+  IconArrowDownRight, IconArrowUpRight, IconBell, IconBulb, IconClock, IconEye, IconEyeOff,
   IconLock, IconMicrophone, IconMoonStars, IconShieldCheck, IconShieldLock,
 } from "@tabler/icons-react";
-import type { SiteAggregate, Starter, ToolRating, TopicTrend, Week } from "./api";
-import { hourLabel, hours, isLate, LEVEL_COLOR, LEVEL_TEXT, sum, topicLabel, worstLevel } from "./format";
+import type { SiteAggregate, ToolRating, TopicTrend, Week } from "./api";
+import { hourLabel, hours, isLate, LEVEL_COLOR, sum, topicLabel } from "./format";
 
 const EXCLUDED = ["Sexual orientation or gender identity", "Abuse or conflict at home", "Sexual health", "Religion"];
 const SITE_COLOR: Record<string, string> = { gemini: "blue", chatgpt: "teal", claude: "orange", characterai: "pink" };
-
-export function Insight({ week, topics, starters }: { week: Week; topics: TopicTrend[]; starters: Starter[] }) {
-  const level = worstLevel(week.sites);
-  const color = LEVEL_COLOR[level];
-  const top = topics.find((t) => t.this_week > 0);
-  const starter = starters.find((s) => s.topic === top?.topic) ?? starters.find((s) => s.topic === "default");
-  const change = top && (top.last_week === top.this_week
-    ? "Same as last week."
-    : `${top.this_week > top.last_week ? "Up" : "Down"} from ${top.last_week} last week.`);
-
-  return (
-    <Paper p="xl" radius="xl" style={{
-      background: `linear-gradient(135deg, var(--mantine-color-${color}-light) 0%, var(--mantine-color-body) 70%)`,
-      border: `1px solid var(--mantine-color-${color}-light-hover)`,
-    }}>
-      <Grid gutter="xl" align="center">
-        <Grid.Col span={{ base: 12, md: 7 }}>
-          <Stack gap="sm">
-            <Group gap="xs">
-              <Badge size="lg" color={color} variant="filled" tt="capitalize">{level}</Badge>
-              <Text size="sm" c="dimmed">{LEVEL_TEXT[level]}</Text>
-            </Group>
-            <Title order={2} fw={600} lh={1.25}>
-              {top ? (
-                <>
-                  <Text span inherit c={`${color}.7`} fw={800}>{topicLabel(top.topic)}</Text> came up {top.this_week}{" "}
-                  {top.this_week === 1 ? "time" : "times"} this week{top.late_night > top.this_week / 2 ? ", mostly after 11pm" : ""}.
-                </>
-              ) : "No topics stood out this week."}
-            </Title>
-            {change && <Text size="lg" c="dimmed">{change}</Text>}
-          </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 5 }}>
-          {level === "crisis" ? (
-            <Blockquote color="grape" icon={<IconShieldCheck size={20} />} radius="lg">
-              This week, talk to a school counselor or your teen's doctor about how to start the conversation.
-            </Blockquote>
-          ) : starter && (
-            <Card radius="lg" padding="lg" withBorder shadow="sm">
-              <Group justify="space-between" mb={6}>
-                <Group gap={6}><IconBulb size={18} color="var(--mantine-color-yellow-6)" /><Text size="sm" fw={600}>Try saying</Text></Group>
-                <CopyButton value={starter.text}>
-                  {({ copied, copy }) => (
-                    <Tooltip label={copied ? "Copied" : "Copy"}>
-                      <ActionIcon variant="subtle" color={copied ? "teal" : "gray"} onClick={copy} aria-label="Copy starter">
-                        {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                      </ActionIcon>
-                    </Tooltip>
-                  )}
-                </CopyButton>
-              </Group>
-              <Text size="lg" fs="italic" lh={1.4}>“{starter.text}”</Text>
-              <Text size="xs" c="dimmed" mt="sm">From a vetted set of open, judgment-free questions.</Text>
-            </Card>
-          )}
-        </Grid.Col>
-      </Grid>
-    </Paper>
-  );
-}
 
 function Stat({ label, value, icon, color, now, before, format }: {
   label: string; value: string; icon: ReactNode; color: string; now: number; before: number | null; format: (n: number) => string;

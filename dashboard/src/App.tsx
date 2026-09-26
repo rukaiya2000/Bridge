@@ -6,9 +6,9 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconApps, IconChartBar, IconHeartHandshake, IconLayoutDashboard, IconMoon, IconShieldLock, IconSun } from "@tabler/icons-react";
-import { API_URL, fetchRatings, fetchStarters, fetchTopics, fetchWeek, fetchWeeks } from "./api";
+import { API_URL, fetchRatings, fetchTopics, fetchWeek, fetchWeeks } from "./api";
 import { formatWeek, previousWeek } from "./format";
-import { HoursChart, Insight, Privacy, Stats, Tools, TopicsChart } from "./sections";
+import { HoursChart, Privacy, Stats, Tools, TopicsChart } from "./sections";
 
 const CHILD_ID = "demo";
 const REFRESH_MS = 15_000;
@@ -25,10 +25,9 @@ export function App() {
   const prev = useQuery({ queryKey: ["week", CHILD_ID, prevKey], queryFn: () => fetchWeek(CHILD_ID, prevKey!), enabled: !!prevKey });
   const topics = useQuery({ queryKey: ["topics", CHILD_ID, selected], queryFn: () => fetchTopics(CHILD_ID, selected!), enabled: !!selected, refetchInterval: REFRESH_MS });
   const ratings = useQuery({ queryKey: ["ratings"], queryFn: fetchRatings, staleTime: Infinity });
-  const starters = useQuery({ queryKey: ["starters"], queryFn: fetchStarters, staleTime: Infinity });
 
-  const failed = [weeks, week, topics, ratings, starters].some((q) => q.isError);
-  const ready = week.data && topics.data && ratings.data && starters.data;
+  const failed = [weeks, week, topics, ratings].some((q) => q.isError);
+  const ready = week.data && topics.data && ratings.data;
 
   let body;
   if (failed) {
@@ -40,7 +39,6 @@ export function App() {
   } else {
     body = (
       <Stack gap="xl">
-        <Insight week={week.data!} topics={topics.data!} starters={starters.data!} />
         <Stats week={week.data!} prev={prev.data ?? null} />
         <Grid gutter="lg">
           <Grid.Col span={{ base: 12, lg: 6 }}><TopicsChart topics={topics.data!} /></Grid.Col>

@@ -7,8 +7,26 @@ import * as store from "../storage";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const FIXTURES = ["sample-arc.labeled.json", "demo-arc.labeled.json"];
 
+// Endpoint presets fill in base URL and model; "Custom" leaves them for the user.
+const preset = $<HTMLSelectElement>("preset");
+for (const [id, p] of [...Object.entries(store.LLM_PRESETS), ["custom", { label: "Custom" }] as const]) {
+  preset.append(new Option(p.label, id));
+}
+preset.addEventListener("change", () => {
+  const p = store.LLM_PRESETS[preset.value as keyof typeof store.LLM_PRESETS];
+  if (!p) return;
+  $<HTMLInputElement>("llm-url").value = p.baseUrl;
+  $<HTMLInputElement>("llm-model").value = p.model;
+});
+
 async function loadSettings() {
   const s = await store.get("settings");
+  $<HTMLSelectElement>("provider").value = s.provider;
+  $<HTMLInputElement>("llm-url").value = s.llmBaseUrl;
+  $<HTMLInputElement>("llm-key").value = s.llmKey;
+  $<HTMLInputElement>("llm-model").value = s.llmModel;
+  const match = Object.entries(store.LLM_PRESETS).find(([, p]) => p.baseUrl === s.llmBaseUrl);
+  $<HTMLSelectElement>("preset").value = match?.[0] ?? "custom";
   $<HTMLInputElement>("key").value = s.geminiKey;
   $<HTMLInputElement>("model").value = s.model;
   $<HTMLInputElement>("nudges").checked = s.nudgesEnabled;
@@ -20,8 +38,12 @@ async function loadSettings() {
 
 $("save").addEventListener("click", async () => {
   await store.set("settings", {
+    provider: $<HTMLSelectElement>("provider").value as store.Settings["provider"],
+    llmBaseUrl: $<HTMLInputElement>("llm-url").value.trim() || store.DEFAULTS.settings.llmBaseUrl,
+    llmKey: $<HTMLInputElement>("llm-key").value.trim(),
+    llmModel: $<HTMLInputElement>("llm-model").value.trim() || store.DEFAULTS.settings.llmModel,
     geminiKey: $<HTMLInputElement>("key").value.trim(),
-    model: $<HTMLInputElement>("model").value.trim() || "gemini-3.8-flash",
+    model: $<HTMLInputElement>("model").value.trim() || store.DEFAULTS.settings.model,
     nudgesEnabled: $<HTMLInputElement>("nudges").checked,
     spokenNudges: $<HTMLInputElement>("spoken").checked,
     privacyStrict: $<HTMLInputElement>("strict").checked,
@@ -40,7 +62,7 @@ $("test").addEventListener("click", async () => {
   };
   $("test-out").textContent = "…";
   try {
-    const labels = await core.labelTurn(user, null, { geminiKey: s.geminiKey || undefined, model: s.model });
+    const labels = await core.labelTurn(user, null, store.labelOptions(s));
     $("test-out").textContent = JSON.stringify(labels, null, 2);
   } catch (e) {
     $("test-out").textContent = String(e);

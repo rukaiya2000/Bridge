@@ -53,3 +53,39 @@ describe("labelTurn", () => {
     expect(l.source).toBe("rules");
   });
 });
+
+describe("labelTurn via an OpenAI-compatible API", () => {
+  const seen: { url: string; model: string }[] = [];
+  const compatReply = (content: string, status = 200) =>
+    (async (url: string | URL | Request, init?: RequestInit) => {
+      seen.push({ url: String(url), model: JSON.parse(String(init?.body)).model });
+      return new Response(JSON.stringify(status === 200 ? { choices: [{ message: { role: "assistant", content } }] } : { error: {} }), {
+        status, headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+  const opts = { provider: "openai" as const, llmKey: "k" };
+
+  it("posts to UF Navigator by default and merges JSON, even inside a code fence", async () => {
+    const l = await labelTurn(turn("you're the only one who gets me"), null, { ...opts, fetchImpl: compatReply("```json\n" + good + "\n```") });
+    expect(l).toMatchObject({ source: "rules+llm", dependency: true, topics: ["loneliness"] });
+    expect(seen.at(-1)).toEqual({ url: "https://api.navigator.ai.ufl.edu/v1/chat/completions", model: "gemma-4-31b-it" });
+  });
+
+  it("uses the configured base URL and model (OpenRouter)", async () => {
+    await labelTurn(turn("hi"), null, {
+      ...opts, llmBaseUrl: "https://openrouter.ai/api/v1", llmModel: "google/gemini-3.8-flash", fetchImpl: compatReply(good),
+    });
+    expect(seen.at(-1)).toEqual({ url: "https://openrouter.ai/api/v1/chat/completions", model: "google/gemini-3.8-flash" });
+  });
+
+  it("falls back to rules on a bad reply, an API error, or no key", async () => {
+    expect((await labelTurn(turn("hi"), null, { ...opts, fetchImpl: compatReply("sorry, no") })).source).toBe("rules");
+    expect((await labelTurn(turn("hi"), null, { ...opts, fetchImpl: compatReply("", 401) })).source).toBe("rules");
+    expect((await labelTurn(turn("hi"), null, { provider: "openai", geminiKey: "g" })).source).toBe("rules");
+  });
+
+  it("keeps the rules crisis flag", async () => {
+    const l = await labelTurn(turn("i want to die"), null, { ...opts, fetchImpl: compatReply(good) });
+    expect(l.crisis).toBe(true);
+  });
+});

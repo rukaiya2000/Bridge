@@ -8,7 +8,6 @@ export type Week = Schemas["SyncPayload"];
 export type SiteAggregate = Schemas["SiteAggregate"];
 export type TopicTrend = Schemas["TopicTrend"];
 export type ToolRating = Schemas["ToolRating"];
-export type Starter = Schemas["Starter"];
 export type Level = SiteAggregate["level"];
 
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
@@ -31,4 +30,3 @@ export const fetchTopics = async (child: string, week: string) =>
 
 export const fetchRatings = async () => ok(await api.GET("/tools/ratings"), "tool ratings");
 
-export const fetchStarters = async () => ok(await api.GET("/starters"), "starters");
