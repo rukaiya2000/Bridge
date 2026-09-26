@@ -1,6 +1,7 @@
 // Debug view: level, score and label counts per site. Shows labels only, never text.
 import type { Site, TurnLabels } from "../../../core/src/types";
 import * as store from "../storage";
+import type { ToWorker } from "../messages";
 import { dayKey } from "../../../core/src/time";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -51,4 +52,9 @@ async function render() {
 }
 
 $("reset").addEventListener("click", async () => { await store.resetData(); await render(); });
+$("sync-now").addEventListener("click", () => {
+  const msg: ToWorker = { type: "sync-now" };
+  void chrome.runtime.sendMessage(msg).catch(() => {});
+});
+chrome.storage.onChanged.addListener((changes) => { if (changes.syncStatus) void render(); });
 void render();
