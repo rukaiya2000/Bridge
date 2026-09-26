@@ -2,8 +2,7 @@
 
 Stores aggregates in MongoDB (api/db.py). Needs MONGODB_URI (an Atlas connection string) in .env.
 Everything except /health, /auth/signup and /auth/login needs "Authorization: Bearer <token>" (api/auth.py).
-Load the demo weeks into your account (TOKEN from /auth/login, or the dashboard's "No data yet" screen):
-  for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data @api/fixtures/$f.json; done
+Data only ever comes from the extension's sync. api/fixtures/sample_*.json are for the automated tests only.
 """
 
 import logging

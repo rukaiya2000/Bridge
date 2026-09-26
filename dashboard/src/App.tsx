@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ActionIcon, AppShell, Avatar, Badge, Box, Burger, Center, Code, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text,
-  ThemeIcon, Title, Tooltip, useComputedColorScheme, useMantineColorScheme,
+  ActionIcon, AppShell, Avatar, Badge, Box, Burger, Button, Center, Code, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text, ThemeIcon, Title, Tooltip, useComputedColorScheme, useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconApps, IconChartBar, IconHeartHandshake, IconLayoutDashboard, IconLogout, IconMicrophone, IconMoon, IconShieldLock, IconSun } from "@tabler/icons-react";
@@ -13,8 +12,6 @@ import { Activity, HoursChart, Privacy, Stats, Tools, TopicsChart } from "./sect
 
 const CHILD_ID = "demo";
 const REFRESH_MS = 15_000;
-const seed = (token: string) =>
-  `for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'authorization: Bearer ${token}' -H 'content-type: application/json' --data @api/fixtures/$f.json; done`;
 
 export function App() {
   const [session, setSession] = useState(loadSession);
@@ -47,9 +44,18 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
 
   let body;
   if (failed) {
-    body = <Notice title="Can't reach the Bridge API" text={`Nothing answered at ${API_URL}. Start it with:`} code="uv run --group api uvicorn api.main:app --reload" />;
+    body = (
+      <Notice title="Can't reach Bridge right now" text="Your data is safe. Please try again in a minute.">
+        {import.meta.env.DEV && <Code block>{`# dev: nothing answered at ${API_URL}\nuv run --group api uvicorn api.main:app --reload`}</Code>}
+      </Notice>
+    );
   } else if (weeks.data?.length === 0) {
-    body = <Notice title="No data yet" text="You're logged in, but nothing has been synced to this account yet. Log in to the extension's Options page with the same account, or load the demo weeks from the repo root with:" code={seed(session.token)} />;
+      body = (
+      <Notice
+        title="No activity yet"
+        text="Your teen's week appears here once Bridge on their browser is signed in to this account. Open the Bridge extension's Options, sign in with the same email, and data shows up within a minute of their next chat."
+      />
+    );
   } else if (!ready) {
     body = <Center h={400}><Loader /></Center>;
   } else {
@@ -137,13 +143,13 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   );
 }
 
-function Notice({ title, text, code }: { title: string; text: string; code: string }) {
+function Notice({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
   return (
     <Center h={420}>
       <Paper withBorder p="xl" radius="lg" maw={640}>
         <Title order={3} mb="xs">{title}</Title>
         <Text c="dimmed" mb="md">{text}</Text>
-        <Code block>{code}</Code>
+        {children}
       </Paper>
     </Center>
   );
