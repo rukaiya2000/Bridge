@@ -75,7 +75,9 @@ async function onTurn(turn: Turn, tabId?: number) {
 async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefined, crisisShown: boolean) {
   // Label outside the lock: the Gemini call can take seconds and must not stall heartbeats.
   const settings = await store.get("settings");
-  const labels = await core.labelTurn(user, bot, { geminiKey: settings.geminiKey || undefined, model: settings.model });
+  const labels = await core.labelTurn(user, bot, store.labelOptions(settings));
+  // Labels only, never the text (open the service worker's DevTools from chrome://extensions to see these).
+  console.info(`[Bridge] labeled ${user.site} turn via ${labels.source}:`, labels);
   if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
   await locked(() => recordTurn(user, labels, tabId));
 }
@@ -88,6 +90,7 @@ async function recordTurn(user: Turn, labels: TurnLabels, tabId: number | undefi
   const state = await store.get("state");
   const previous = state[site]?.level ?? "healthy";
   state[site] = { ...result, updatedAt: Date.now() };
+  console.info(`[Bridge] ${site} level ${previous} -> ${result.level} (score ${result.score.toFixed(1)})`, result.reasons);
   await store.set("profiles", profiles);
   await store.set("state", state);
 
@@ -172,6 +175,7 @@ async function maybeNudge(site: Site, tabId: number | undefined, level: Level) {
 }
 
 async function showCrisis(site: Site, tabId: number | undefined, abuseAtHome: boolean) {
+  console.warn(`[Bridge] crisis signal on ${site}: showing the crisis screen (never synced as text)`);
   send(tabId, { type: "show-crisis", abuseAtHome });
   await speakIfVoice(site, abuseAtHome ? "audio/crisis-abuse.mp3" : "audio/crisis.mp3");
 }
@@ -235,6 +239,7 @@ async function doSync() {
   } catch (e) {
     status = { at: now, ok: false, message: `sync error: ${String(e)}` };
   }
+  (status.ok ? console.info : console.warn)(`[Bridge] sync: ${status.message}`);
   await locked(() => store.set("syncStatus", status));
 }
 
@@ -249,6 +254,7 @@ async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus
     return { settings, payload };
   });
   let status: NonNullable<store.Store["syncStatus"]>;
+  console.info(`[Bridge] sync payload for ${payload.child_id}, week of ${payload.week_start}:`, payload);
   if (!payload.sites.length) {
     status = { at: now, ok: true, message: "nothing to sync yet this week" };
   } else {

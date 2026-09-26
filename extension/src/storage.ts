@@ -1,10 +1,15 @@
 // Typed helpers over chrome.storage.local. No key ever holds message text.
-import type { Profile, ScoreResult, Site, TurnLabels } from "../../core/src/types";
+import type { LabelOptions, Profile, ScoreResult, Site, TurnLabels } from "../../core/src/types";
 import type { HourlyTopics, PerDaySite } from "./sync/aggregate";
+import { DEFAULT_LLM_BASE_URL, DEFAULT_LLM_MODEL, DEFAULT_MODEL } from "../../core/src/config";
 
 export interface Settings {
+  provider: "gemini" | "openai"; // which LLM labels turns; "openai" = any OpenAI-compatible API. Local rules always run.
   geminiKey: string;
   model: string;
+  llmBaseUrl: string;    // e.g. UF Navigator or OpenRouter (LLM_PRESETS)
+  llmKey: string;
+  llmModel: string;
   nudgesEnabled: boolean;
   spokenNudges: boolean; // feature 8
   apiUrl: string;        // sync API (api/main.py)
@@ -29,9 +34,13 @@ export interface Store {
   syncStatus: { at: number; ok: boolean; message: string } | null;
 }
 
+// Models the Gemini API no longer serves to this project (404). Saved settings move to DEFAULT_MODEL.
+const RETIRED_MODELS = ["gemini-2.5-flash"];
+
 export const DEFAULTS: Store = {
   settings: {
-    geminiKey: "", model: "gemini-2.5-flash", nudgesEnabled: true, spokenNudges: true,
+    provider: "openai", geminiKey: "", model: DEFAULT_MODEL,
+    llmBaseUrl: DEFAULT_LLM_BASE_URL, llmKey: "", llmModel: DEFAULT_LLM_MODEL, nudgesEnabled: true, spokenNudges: true,
     apiUrl: "http://localhost:8000", childId: "demo",
   },
   profiles: {},
@@ -45,9 +54,41 @@ export const DEFAULTS: Store = {
   syncStatus: null,
 };
 
+// OpenAI-compatible endpoints the options page can fill in. Each needs a host permission in manifest.json.
+export const LLM_PRESETS = {
+  navigator: { label: "UF Navigator (Gemma)", baseUrl: DEFAULT_LLM_BASE_URL, model: DEFAULT_LLM_MODEL },
+  openrouter: { label: "OpenRouter (Gemini)", baseUrl: "https://openrouter.ai/api/v1", model: "google/gemini-3.8-flash" },
+} as const;
+
+// Settings saved before the OpenAI-compatible provider had an OpenRouter-only provider.
+interface LegacySettings { provider: string; openrouterKey?: string; openrouterModel?: string }
+function migrateOpenRouter(s: Settings & LegacySettings) {
+  if ((s.provider as string) !== "openrouter") return;
+  Object.assign(s, {
+    provider: "openai", llmBaseUrl: LLM_PRESETS.openrouter.baseUrl, llmKey: s.openrouterKey ?? "", llmModel: LLM_PRESETS.openrouter.model,
+  });
+  delete s.openrouterKey;
+  delete s.openrouterModel;
+}
+
+// What core.labelTurn needs from the settings.
+export const labelOptions = (s: Settings): LabelOptions => ({
+  provider: s.provider,
+  geminiKey: s.geminiKey || undefined,
+  model: s.model,
+  llmBaseUrl: s.llmBaseUrl,
+  llmKey: s.llmKey || undefined,
+  llmModel: s.llmModel,
+});
+
 export async function get<K extends keyof Store>(key: K): Promise<Store[K]> {
   const got = (await chrome.storage.local.get(key))[key] as Store[K] | undefined;
-  if (key === "settings") return { ...DEFAULTS.settings, ...(got as Settings | undefined) } as Store[K]; // new fields get defaults
+  if (key === "settings") {
+    const s = { ...DEFAULTS.settings, ...(got as Settings | undefined) }; // new fields get defaults
+    if (RETIRED_MODELS.includes(s.model)) s.model = DEFAULT_MODEL;
+    migrateOpenRouter(s as Settings & LegacySettings);
+    return s as Store[K];
+  }
   return got ?? structuredClone(DEFAULTS[key]);
 }
 

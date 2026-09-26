@@ -4,6 +4,8 @@ Stores aggregates in MongoDB (api/db.py). Needs MONGODB_URI (an Atlas connection
 Load the demo weeks: for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/$f.json; done
 """
 
+import logging
+from collections import Counter
 from contextlib import asynccontextmanager
 from datetime import date
 from typing import Annotated
@@ -24,6 +26,13 @@ async def lifespan(app: FastAPI):
     yield
     client.close()
 
+
+# uvicorn only configures its own loggers, so ours needs a handler to show up in the terminal.
+log = logging.getLogger("bridge.api")
+log.setLevel(logging.INFO)
+_handler = logging.StreamHandler()
+_handler.setFormatter(logging.Formatter("%(levelname)s:     [bridge] %(message)s"))
+log.addHandler(_handler)
 
 app = FastAPI(title="Bridge sync API", lifespan=lifespan)
 # Local dev: the dashboard's Vite port varies (5173 is often taken), so allow any localhost port.
@@ -47,6 +56,13 @@ def health(db: Db) -> dict:
 
 @app.post("/sync")
 def sync(payload: SyncPayload, db: Db) -> dict:
+    log.info(
+        "sync child=%s week=%s sites=%s topics=%s",
+        payload.child_id,
+        payload.week_start,
+        [(s.site, s.level, round(s.score, 1)) for s in payload.sites],
+        dict(sum((Counter({t.topic: t.count}) for t in payload.hourly_topics), Counter())),
+    )
     store.save_week(db, payload)
     return {"stored": True}
 
