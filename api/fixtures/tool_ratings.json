@@ -1,0 +1,38 @@
+[
+  {
+    "site": "gemini",
+    "name": "Google Gemini",
+    "type": "general_assistant",
+    "min_age": 13,
+    "teen_safety_settings": true,
+    "summary": "General-purpose assistant with a teen experience and Family Link controls.",
+    "recommendation": "Fine for schoolwork; watch for late-night emotional use."
+  },
+  {
+    "site": "chatgpt",
+    "name": "ChatGPT",
+    "type": "general_assistant",
+    "min_age": 13,
+    "teen_safety_settings": true,
+    "summary": "General-purpose assistant; under-18s need a parent's permission and parental controls are available.",
+    "recommendation": "Link your account to theirs to turn on parental controls."
+  },
+  {
+    "site": "claude",
+    "name": "Claude",
+    "type": "general_assistant",
+    "min_age": 18,
+    "teen_safety_settings": false,
+    "summary": "General-purpose assistant intended for adults.",
+    "recommendation": "Made for adults; suggest an assistant that supports teen accounts."
+  },
+  {
+    "site": "characterai",
+    "name": "Character.AI",
+    "type": "companion",
+    "min_age": 13,
+    "teen_safety_settings": true,
+    "summary": "Companion app built around ongoing role-play relationships with characters.",
+    "recommendation": "Consider a general assistant instead of a companion app."
+  }
+]

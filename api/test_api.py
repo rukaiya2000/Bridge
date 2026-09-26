@@ -16,7 +16,8 @@ WEEK = "/children/demo/weeks/2026-09-01"
 def test_sync_roundtrip(client):
     assert client.post("/sync", json=PAYLOAD).status_code == 200
     got = client.get(WEEK).json()
-    assert got["sites"] == [{**PAYLOAD["sites"][0]}]
+    by_site = lambda sites: sorted(sites, key=lambda x: x["site"])
+    assert by_site(got["sites"]) == by_site(PAYLOAD["sites"])
     key = lambda t: (t["date"], t["hour"], t["topic"])
     assert sorted(got["hourly_topics"], key=key) == sorted(PAYLOAD["hourly_topics"], key=key)
 
@@ -80,3 +81,23 @@ def test_cors_allows_any_local_port(client):
     res = client.get("/health", headers={"origin": "http://localhost:5174"})
     assert res.headers["access-control-allow-origin"] == "http://localhost:5174"
     assert "access-control-allow-origin" not in client.get("/health", headers={"origin": "https://evil.example"}).headers
+
+
+def test_topic_trend_compares_with_last_week(client):
+    prev = json.loads((Path(__file__).parent / "fixtures" / "sample_prev_week.json").read_text())
+    client.post("/sync", json=prev)
+    client.post("/sync", json=PAYLOAD)
+    trend = {t["topic"]: t for t in client.get(WEEK + "/topics").json()}
+    assert trend["loneliness"] == {"topic": "loneliness", "this_week": 6, "last_week": 2, "late_night": 5}
+    assert trend["school"]["last_week"] == 4
+    assert list(trend)[0] == "loneliness"  # most frequent first
+
+
+def test_every_site_has_a_curated_rating(client):
+    sites = {r["site"] for r in client.get("/tools/ratings").json()}
+    assert sites == {"chatgpt", "claude", "characterai", "gemini"}
+
+
+def test_starters_include_a_default(client):
+    topics = {s["topic"] for s in client.get("/starters").json()}
+    assert "default" in topics and "loneliness" in topics

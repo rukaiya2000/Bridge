@@ -3,21 +3,32 @@
 import createClient from "openapi-fetch";
 import type { components, paths } from "./api-schema";
 
-export type Week = components["schemas"]["SyncPayload"];
+type Schemas = components["schemas"];
+export type Week = Schemas["SyncPayload"];
+export type SiteAggregate = Schemas["SiteAggregate"];
+export type TopicTrend = Schemas["TopicTrend"];
+export type ToolRating = Schemas["ToolRating"];
+export type Starter = Schemas["Starter"];
+export type Level = SiteAggregate["level"];
 
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-export const api = createClient<paths>({ baseUrl: API_URL });
+const api = createClient<paths>({ baseUrl: API_URL });
 
-// Latest synced week for a child, or null when nothing has been synced yet.
-// Throws when the API is unreachable or returns an error.
-export async function fetchLatestWeek(childId: string): Promise<Week | null> {
-  const weeks = await api.GET("/children/{child_id}/weeks", { params: { path: { child_id: childId } } });
-  if (weeks.error) throw new Error("could not list weeks");
-  const latest = weeks.data[0];
-  if (!latest) return null;
-  const week = await api.GET("/children/{child_id}/weeks/{week_start}", {
-    params: { path: { child_id: childId, week_start: latest } },
-  });
-  if (week.error) throw new Error(`could not load week ${latest}`);
-  return week.data;
+// openapi-fetch returns { data, error } instead of throwing; TanStack Query expects a throw.
+function ok<T>(res: { data?: T; error?: unknown }, what: string): T {
+  if (res.error !== undefined || res.data === undefined) throw new Error(`could not load ${what}`);
+  return res.data;
 }
+
+export const fetchWeeks = async (child: string) =>
+  ok(await api.GET("/children/{child_id}/weeks", { params: { path: { child_id: child } } }), "weeks");
+
+export const fetchWeek = async (child: string, week: string) =>
+  ok(await api.GET("/children/{child_id}/weeks/{week_start}", { params: { path: { child_id: child, week_start: week } } }), "week");
+
+export const fetchTopics = async (child: string, week: string) =>
+  ok(await api.GET("/children/{child_id}/weeks/{week_start}/topics", { params: { path: { child_id: child, week_start: week } } }), "topics");
+
+export const fetchRatings = async () => ok(await api.GET("/tools/ratings"), "tool ratings");
+
+export const fetchStarters = async () => ok(await api.GET("/starters"), "starters");

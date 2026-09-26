@@ -75,6 +75,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/children/{child_id}/weeks/{week_start}/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Topics
+         * @description Per-topic counts this week vs last week, most frequent first.
+         */
+        get: operations["topics_children__child_id__weeks__week_start__topics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tools/ratings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ratings */
+        get: operations["ratings_tools_ratings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/starters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Starters */
+        get: operations["list_starters_starters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -129,6 +183,16 @@ export interface components {
             /** Paid Tier */
             paid_tier?: boolean | null;
         };
+        /**
+         * Starter
+         * @description Vetted conversation starter (desc.md feature 2). `topic` is a Topic or "default".
+         */
+        Starter: {
+            /** Topic */
+            topic: ("loneliness" | "sadness" | "stress" | "anxiety" | "anger" | "self_worth" | "school" | "friends" | "family" | "romance" | "body_image" | "boredom" | "other") | "default";
+            /** Text */
+            text: string;
+        };
         /** SyncPayload */
         SyncPayload: {
             /** Child Id */
@@ -142,6 +206,49 @@ export interface components {
             sites: components["schemas"]["SiteAggregate"][];
             /** Hourly Topics */
             hourly_topics: components["schemas"]["HourlyTopicCount"][];
+        };
+        /**
+         * ToolRating
+         * @description Hand-curated rating for one AI site (desc.md feature 6). Stored in MongoDB, never generated.
+         */
+        ToolRating: {
+            /**
+             * Site
+             * @enum {string}
+             */
+            site: "chatgpt" | "claude" | "characterai" | "gemini";
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "general_assistant" | "companion";
+            /** Min Age */
+            min_age: number;
+            /** Teen Safety Settings */
+            teen_safety_settings: boolean;
+            /** Summary */
+            summary: string;
+            /** Recommendation */
+            recommendation: string;
+        };
+        /**
+         * TopicTrend
+         * @description Per-topic counts for one week vs the week before (computed by a MongoDB aggregation).
+         */
+        TopicTrend: {
+            /**
+             * Topic
+             * @enum {string}
+             */
+            topic: "loneliness" | "sadness" | "stress" | "anxiety" | "anger" | "self_worth" | "school" | "friends" | "family" | "romance" | "body_image" | "boredom" | "other";
+            /** This Week */
+            this_week: number;
+            /** Last Week */
+            last_week: number;
+            /** Late Night */
+            late_night: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -281,6 +388,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    topics_children__child_id__weeks__week_start__topics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                child_id: string;
+                week_start: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicTrend"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ratings_tools_ratings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolRating"][];
+                };
+            };
+        };
+    };
+    list_starters_starters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Starter"][];
                 };
             };
         };

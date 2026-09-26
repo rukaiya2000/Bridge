@@ -1,0 +1,38 @@
+[
+  {
+    "topic": "loneliness",
+    "text": "I've been feeling stretched lately. How are things with your friends?"
+  },
+  {
+    "topic": "sadness",
+    "text": "You've seemed a bit low lately. Want to go for a walk and talk about anything?"
+  },
+  {
+    "topic": "stress",
+    "text": "This week looked busy. What's taking up most of your headspace right now?"
+  },
+  {
+    "topic": "anxiety",
+    "text": "Is anything coming up that you're dreading? I'm happy to just listen."
+  },
+  {
+    "topic": "friends",
+    "text": "Who have you been hanging out with lately? I'd love to hear about them."
+  },
+  {
+    "topic": "school",
+    "text": "What's the most interesting thing you're working on at school?"
+  },
+  {
+    "topic": "family",
+    "text": "How are things feeling at home for you lately? Anything you'd change?"
+  },
+  {
+    "topic": "self_worth",
+    "text": "What's something you did recently that you're proud of?"
+  },
+  {
+    "topic": "default",
+    "text": "What's been the best and hardest part of your week?"
+  }
+]

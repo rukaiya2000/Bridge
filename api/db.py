@@ -3,12 +3,16 @@ fields, and the weekly_aggregates validator below rejects them again at the data
 
   weekly_aggregates  one document per child, week and site (level, score, hours, ...)
   hourly_topics      time-series collection of topic counts per hour
+  tool_ratings       hand-curated rating per AI site      (seeded from api/fixtures/tool_ratings.json)
+  starters           vetted conversation starters         (seeded from api/fixtures/starters.json)
 
 Both expire RETENTION after they were written (TTL), so old data is deleted by MongoDB itself.
 """
 
+import json
 import os
 from datetime import date, datetime, time, timedelta, timezone
+from pathlib import Path
 from typing import get_args
 
 from dotenv import load_dotenv
@@ -16,11 +20,12 @@ from pymongo import MongoClient, UpdateOne
 from pymongo.database import Database
 from pymongo.errors import CollectionInvalid
 
-from api.models import Level, Site, SyncPayload
+from api.models import Level, Site, Starter, SyncPayload, ToolRating, TopicTrend
 
 load_dotenv()  # MONGODB_URI / MONGODB_DB from the repo's .env, if present
 
 RETENTION = timedelta(weeks=8)
+FIXTURES = Path(__file__).parent / "fixtures"
 
 # Second guard next to the API's pydantic models: no extra fields (so no message text) can be stored.
 WEEKLY_VALIDATOR = {
@@ -74,6 +79,17 @@ def ensure_schema(db: Database) -> None:
         db.command("collMod", "weekly_aggregates", validator=WEEKLY_VALIDATOR)
     db.weekly_aggregates.create_index([("child_id", 1), ("week_start", 1), ("site", 1)], unique=True)
     db.weekly_aggregates.create_index("synced_at", expireAfterSeconds=ttl)
+    _seed(db, "tool_ratings", "tool_ratings.json", ToolRating, key="site")
+    _seed(db, "starters", "starters.json", Starter, key="topic")
+
+
+def _seed(db: Database, collection: str, fixture: str, model, key: str) -> None:
+    """Upserts the curated JSON into MongoDB, so editing the file and restarting updates it."""
+    rows = [model.model_validate(r).model_dump() for r in json.loads((FIXTURES / fixture).read_text())]
+    db[collection].create_index(key, unique=True)
+    if rows:
+        db[collection].bulk_write([UpdateOne({key: r[key]}, {"$set": r}, upsert=True) for r in rows])
+    db[collection].delete_many({key: {"$nin": [r[key] for r in rows]}})
 
 
 def _week_range(week_start: date) -> tuple[datetime, datetime]:
@@ -133,3 +149,31 @@ def load_week(db: Database, child_id: str, week_start: date) -> SyncPayload | No
         }},
     ]))
     return SyncPayload(child_id=child_id, week_start=week_start, sites=sites, hourly_topics=hourly)
+
+
+def topic_trend(db: Database, child_id: str, week_start: date) -> list[TopicTrend]:
+    """Topic counts this week vs last week, plus this week's late-night count, in one aggregation."""
+    start, end = _week_range(week_start)
+    prev = start - timedelta(days=7)
+    this_week = {"$gte": ["$ts", start]}
+    late = {"$or": [{"$gte": [{"$hour": "$ts"}, 23]}, {"$lt": [{"$hour": "$ts"}, 5]}]}
+    rows = db.hourly_topics.aggregate([
+        {"$match": {"meta.child_id": child_id, "ts": {"$gte": prev, "$lt": end}}},
+        {"$group": {
+            "_id": "$meta.topic",
+            "this_week": {"$sum": {"$cond": [this_week, "$count", 0]}},
+            "last_week": {"$sum": {"$cond": [this_week, 0, "$count"]}},
+            "late_night": {"$sum": {"$cond": [{"$and": [this_week, late]}, "$count", 0]}},
+        }},
+        {"$sort": {"this_week": -1, "last_week": -1, "_id": 1}},
+        {"$project": {"_id": 0, "topic": "$_id", "this_week": 1, "last_week": 1, "late_night": 1}},
+    ])
+    return [TopicTrend(**r) for r in rows]
+
+
+def tool_ratings(db: Database) -> list[ToolRating]:
+    return [ToolRating(**r) for r in db.tool_ratings.find({}, {"_id": 0}).sort("site")]
+
+
+def starters(db: Database) -> list[Starter]:
+    return [Starter(**r) for r in db.starters.find({}, {"_id": 0}).sort("topic")]

@@ -157,6 +157,104 @@
           }
         }
       }
+    },
+    "/children/{child_id}/weeks/{week_start}/topics": {
+      "get": {
+        "summary": "Topics",
+        "description": "Per-topic counts this week vs last week, most frequent first.",
+        "operationId": "topics_children__child_id__weeks__week_start__topics_get",
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Id"
+            }
+          },
+          {
+            "name": "week_start",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Week Start"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TopicTrend"
+                  },
+                  "title": "Response Topics Children  Child Id  Weeks  Week Start  Topics Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/ratings": {
+      "get": {
+        "summary": "Ratings",
+        "operationId": "ratings_tools_ratings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ToolRating"
+                  },
+                  "type": "array",
+                  "title": "Response Ratings Tools Ratings Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/starters": {
+      "get": {
+        "summary": "List Starters",
+        "operationId": "list_starters_starters_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Starter"
+                  },
+                  "type": "array",
+                  "title": "Response List Starters Starters Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -293,6 +391,49 @@
         ],
         "title": "SiteAggregate"
       },
+      "Starter": {
+        "properties": {
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "loneliness",
+                  "sadness",
+                  "stress",
+                  "anxiety",
+                  "anger",
+                  "self_worth",
+                  "school",
+                  "friends",
+                  "family",
+                  "romance",
+                  "body_image",
+                  "boredom",
+                  "other"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "default"
+              }
+            ],
+            "title": "Topic"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "text"
+        ],
+        "title": "Starter",
+        "description": "Vetted conversation starter (desc.md feature 2). `topic` is a Topic or \"default\"."
+      },
       "SyncPayload": {
         "properties": {
           "child_id": {
@@ -328,6 +469,106 @@
           "hourly_topics"
         ],
         "title": "SyncPayload"
+      },
+      "ToolRating": {
+        "properties": {
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "general_assistant",
+              "companion"
+            ],
+            "title": "Type"
+          },
+          "min_age": {
+            "type": "integer",
+            "title": "Min Age"
+          },
+          "teen_safety_settings": {
+            "type": "boolean",
+            "title": "Teen Safety Settings"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site",
+          "name",
+          "type",
+          "min_age",
+          "teen_safety_settings",
+          "summary",
+          "recommendation"
+        ],
+        "title": "ToolRating",
+        "description": "Hand-curated rating for one AI site (desc.md feature 6). Stored in MongoDB, never generated."
+      },
+      "TopicTrend": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "loneliness",
+              "sadness",
+              "stress",
+              "anxiety",
+              "anger",
+              "self_worth",
+              "school",
+              "friends",
+              "family",
+              "romance",
+              "body_image",
+              "boredom",
+              "other"
+            ],
+            "title": "Topic"
+          },
+          "this_week": {
+            "type": "integer",
+            "title": "This Week"
+          },
+          "last_week": {
+            "type": "integer",
+            "title": "Last Week"
+          },
+          "late_night": {
+            "type": "integer",
+            "title": "Late Night"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "this_week",
+          "last_week",
+          "late_night"
+        ],
+        "title": "TopicTrend",
+        "description": "Per-topic counts for one week vs the week before (computed by a MongoDB aggregation)."
       },
       "ValidationError": {
         "properties": {

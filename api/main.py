@@ -1,7 +1,7 @@
 """Sync API. Run: uv run --group api uvicorn api.main:app --reload
 
 Stores aggregates in MongoDB (api/db.py). Needs MONGODB_URI (an Atlas connection string) in .env.
-Load the demo week: curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/sample_week.json
+Load the demo weeks: for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/$f.json; done
 """
 
 from contextlib import asynccontextmanager
@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pymongo.database import Database
 
 from api import db as store
-from api.models import SyncPayload
+from api.models import Starter, SyncPayload, ToolRating, TopicTrend
 
 
 @asynccontextmanager
@@ -63,3 +63,19 @@ def week(child_id: str, week_start: date, db: Db) -> SyncPayload:
     if found is None:
         raise HTTPException(404, "no data for that week")
     return found
+
+
+@app.get("/children/{child_id}/weeks/{week_start}/topics")
+def topics(child_id: str, week_start: date, db: Db) -> list[TopicTrend]:
+    """Per-topic counts this week vs last week, most frequent first."""
+    return store.topic_trend(db, child_id, week_start)
+
+
+@app.get("/tools/ratings")
+def ratings(db: Db) -> list[ToolRating]:
+    return store.tool_ratings(db)
+
+
+@app.get("/starters")
+def list_starters(db: Db) -> list[Starter]:
+    return store.starters(db)

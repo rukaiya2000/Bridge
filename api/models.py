@@ -51,3 +51,28 @@ class SyncPayload(Strict):
             if not self.week_start <= t.date < end:
                 raise ValueError(f"hourly topic date {t.date} is outside the week starting {self.week_start}")
         return self
+
+
+class TopicTrend(Strict):
+    """Per-topic counts for one week vs the week before (computed by a MongoDB aggregation)."""
+    topic: Topic
+    this_week: int
+    last_week: int
+    late_night: int  # this week's count between 23:00 and 04:59
+
+
+class ToolRating(Strict):
+    """Hand-curated rating for one AI site (desc.md feature 6). Stored in MongoDB, never generated."""
+    site: Site
+    name: str
+    type: Literal["general_assistant", "companion"]
+    min_age: int
+    teen_safety_settings: bool
+    summary: str
+    recommendation: str
+
+
+class Starter(Strict):
+    """Vetted conversation starter (desc.md feature 2). `topic` is a Topic or "default"."""
+    topic: Topic | Literal["default"]
+    text: str

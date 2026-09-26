@@ -70,11 +70,11 @@ uv run python -m eval.run --split tuning
 uv run --group api uvicorn api.main:app --reload     # http://localhost:8000 (docs at /docs)
 npm run dev -w dashboard                             # http://localhost:5173, or the next free port
 ```
-Data is stored in MongoDB (`api/db.py`): `weekly_aggregates` (one document per child, week and site) and `hourly_topics` (a time-series collection). Both are deleted automatically 8 weeks after they're written. Load the demo week:
+Data is stored in MongoDB (`api/db.py`): `weekly_aggregates` (one document per child, week and site) and `hourly_topics` (a time-series collection). Both are deleted automatically 8 weeks after they're written. Tool ratings and conversation starters are seeded into MongoDB from `api/fixtures/tool_ratings.json` and `starters.json` on every start (the ratings are a hand-written draft: verify them before the demo). Load the two demo weeks (mock data):
 ```bash
-curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/sample_week.json
+for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/$f.json; done
 ```
-The dashboard shows the latest synced week and refreshes every 15 s. If the API is down it shows the sample week with a warning. Point it elsewhere with `VITE_API_URL`.
+The dashboard shows the latest synced week (pick older ones in the week menu) and refreshes every 15 s. Point it elsewhere with `VITE_API_URL`.
 
 After changing `api/models.py` or the routes, regenerate the dashboard's types: `npm run gen:api -w dashboard`.
 
