@@ -36,4 +36,20 @@ describe("labelTurn", () => {
     const l = await labelTurn(turn("hi"), null, { geminiKey: "k", fetchImpl: hang, timeoutMs: 20 });
     expect(l.source).toBe("rules");
   });
+
+  it("retries when Gemini is overloaded (503) and then succeeds", async () => {
+    let calls = 0;
+    const flaky = (async () => (++calls < 2 ? new Response("busy", { status: 503 }) : geminiReply(good)())) as typeof fetch;
+    const l = await labelTurn(turn("hi"), null, { geminiKey: "k", fetchImpl: flaky });
+    expect(calls).toBe(2);
+    expect(l.source).toBe("rules+gemini");
+  });
+
+  it("does not retry a bad request (400)", async () => {
+    let calls = 0;
+    const bad = (async () => { calls++; return new Response("bad", { status: 400 }); }) as typeof fetch;
+    const l = await labelTurn(turn("hi"), null, { geminiKey: "k", fetchImpl: bad });
+    expect(calls).toBe(1);
+    expect(l.source).toBe("rules");
+  });
 });

@@ -9,8 +9,8 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-LABELER_MODEL = "gemini-2.5-flash"   # must match core/src/config.ts
-GENERATOR_MODEL = "gemini-2.5-pro"   # a different tier on purpose
+LABELER_MODEL = "gemini-3.8-flash"   # must match core/src/config.ts
+GENERATOR_MODEL = "gemini-3-flash-preview"  # a different model on purpose; Pro models need a paid quota
 
 DATA = ROOT / "eval" / "data"
 RESULTS = ROOT / "eval" / "results"
