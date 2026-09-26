@@ -54,14 +54,14 @@ def label_all(pairs: list[dict], rules_only: bool = False) -> dict[str, dict]:
         for p, r in zip(todo, results):
             h = _cache_key(p["user"], p["bot"])
             cache[h] = r["labels"]
-            # A "rules" label here means the Gemini call failed. Use it for this run but don't
-            # cache it, so a rerun asks Gemini again instead of freezing a degraded label.
+            # A "rules" label here means the Navigator call failed. Use it for this run but don't
+            # cache it, so a rerun asks Navigator again instead of freezing a degraded label.
             if not rules_only and r["labels"]["source"] == "rules":
                 fell_back += 1
                 continue
             new_rows.append({"hash": h, "labels": r["labels"]})
         if fell_back:
-            print(f"WARNING: {fell_back}/{len(todo)} labels fell back to rules (Gemini failed). Rerun to retry them.")
+            print(f"WARNING: {fell_back}/{len(todo)} labels fell back to rules (Navigator failed). Rerun to retry them.")
         if not rules_only:
             config.LABELS_CACHE.parent.mkdir(parents=True, exist_ok=True)
             with config.LABELS_CACHE.open("a") as f:
