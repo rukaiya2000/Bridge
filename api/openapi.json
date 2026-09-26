@@ -140,7 +140,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SyncPayload"
+                  "$ref": "#/components/schemas/WeekSummary"
                 }
               }
             }
@@ -446,6 +446,13 @@
             "type": "string",
             "title": "Child Id"
           },
+          "device_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Device Id",
+            "default": "legacy"
+          },
           "week_start": {
             "type": "string",
             "format": "date",
@@ -474,7 +481,8 @@
           "sites",
           "hourly_topics"
         ],
-        "title": "SyncPayload"
+        "title": "SyncPayload",
+        "description": "One device's week. Several devices (browsers) can report for the same child_id."
       },
       "ToolRating": {
         "properties": {
@@ -615,6 +623,48 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WeekSummary": {
+        "properties": {
+          "child_id": {
+            "type": "string",
+            "title": "Child Id"
+          },
+          "week_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Week Start"
+          },
+          "devices": {
+            "type": "integer",
+            "title": "Devices"
+          },
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/SiteAggregate"
+            },
+            "type": "array",
+            "title": "Sites"
+          },
+          "hourly_topics": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyTopicCount"
+            },
+            "type": "array",
+            "title": "Hourly Topics"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "child_id",
+          "week_start",
+          "devices",
+          "sites",
+          "hourly_topics"
+        ],
+        "title": "WeekSummary",
+        "description": "A child's week as the parent sees it: every device added up (api/db.py load_week)."
       }
     }
   }

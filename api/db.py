@@ -1,7 +1,7 @@
 """MongoDB storage for the sync API. Only aggregates reach this layer: models.py rejects unknown
 fields, and the weekly_aggregates validator below rejects them again at the database.
 
-  weekly_aggregates  one document per child, week and site (level, score, hours, ...)
+  weekly_aggregates  one document per child, device, week and site (level, score, hours, ...)
   hourly_topics      time-series collection of topic counts per hour
   tool_ratings       hand-curated rating per AI site      (seeded from api/fixtures/tool_ratings.json)
   starters           vetted conversation starters         (seeded from api/fixtures/starters.json)
@@ -20,7 +20,7 @@ from pymongo import MongoClient, UpdateOne
 from pymongo.database import Database
 from pymongo.errors import CollectionInvalid
 
-from api.models import Level, Site, Starter, SyncPayload, ToolRating, TopicTrend
+from api.models import Level, Site, Starter, SyncPayload, ToolRating, TopicTrend, WeekSummary
 
 load_dotenv()  # MONGODB_URI / MONGODB_DB from the repo's .env, if present
 
@@ -32,10 +32,11 @@ WEEKLY_VALIDATOR = {
     "$jsonSchema": {
         "bsonType": "object",
         "additionalProperties": False,
-        "required": ["child_id", "week_start", "site", "level", "score", "synced_at"],
+        "required": ["child_id", "device_id", "week_start", "site", "level", "score", "synced_at"],
         "properties": {
             "_id": {"bsonType": "objectId"},
             "child_id": {"bsonType": "string"},
+            "device_id": {"bsonType": "string"},
             "week_start": {"bsonType": "string"},
             "site": {"enum": list(get_args(Site))},
             "level": {"enum": list(get_args(Level))},
@@ -78,7 +79,14 @@ def ensure_schema(db: Database) -> None:
         db.create_collection("weekly_aggregates", validator=WEEKLY_VALIDATOR)
     except CollectionInvalid:
         db.command("collMod", "weekly_aggregates", validator=WEEKLY_VALIDATOR)
-    db.weekly_aggregates.create_index([("child_id", 1), ("week_start", 1), ("site", 1)], unique=True)
+    # Before device ids, one document per child/week/site. Label those rows as one "legacy" device
+    # and replace the old unique index, which would stop two devices reporting the same site.
+    db.weekly_aggregates.update_many({"device_id": {"$exists": False}}, {"$set": {"device_id": "legacy"}})
+    db.hourly_topics.update_many({"meta.device_id": {"$exists": False}}, {"$set": {"meta.device_id": "legacy"}})
+    if "child_id_1_week_start_1_site_1" in db.weekly_aggregates.index_information():
+        db.weekly_aggregates.drop_index("child_id_1_week_start_1_site_1")
+    db.weekly_aggregates.create_index(
+        [("child_id", 1), ("week_start", 1), ("site", 1), ("device_id", 1)], unique=True)
     db.weekly_aggregates.create_index("synced_at", expireAfterSeconds=ttl)
     _seed(db, "tool_ratings", "tool_ratings.json", ToolRating, key="site")
     _seed(db, "starters", "starters.json", Starter, key="topic")
@@ -99,10 +107,11 @@ def _week_range(week_start: date) -> tuple[datetime, datetime]:
 
 
 def save_week(db: Database, p: SyncPayload) -> None:
-    """Stores a full snapshot of one child's week, replacing any earlier sync of that week."""
+    """Stores one device's snapshot of a child's week, replacing that device's earlier sync only.
+    Other devices' data for the same child is left alone and added up when read (load_week)."""
     week = p.week_start.isoformat()
     now = datetime.now(timezone.utc)
-    key = {"child_id": p.child_id, "week_start": week}
+    key = {"child_id": p.child_id, "device_id": p.device_id, "week_start": week}
     ops = [
         UpdateOne({**key, "site": s.site}, {"$set": {**s.model_dump(), "synced_at": now}}, upsert=True)
         for s in p.sites
@@ -112,12 +121,13 @@ def save_week(db: Database, p: SyncPayload) -> None:
     db.weekly_aggregates.delete_many({**key, "site": {"$nin": [s.site for s in p.sites]}})
 
     start, end = _week_range(p.week_start)
-    db.hourly_topics.delete_many({"meta.child_id": p.child_id, "ts": {"$gte": start, "$lt": end}})
+    db.hourly_topics.delete_many(
+        {"meta.child_id": p.child_id, "meta.device_id": p.device_id, "ts": {"$gte": start, "$lt": end}})
     if p.hourly_topics:
         db.hourly_topics.insert_many([
             {
                 "ts": datetime.combine(t.date, time(hour=t.hour), timezone.utc),
-                "meta": {"child_id": p.child_id, "topic": t.topic},
+                "meta": {"child_id": p.child_id, "device_id": p.device_id, "topic": t.topic},
                 "count": t.count,
             }
             for t in p.hourly_topics
@@ -128,28 +138,54 @@ def list_weeks(db: Database, child_id: str) -> list[str]:
     return sorted(db.weekly_aggregates.distinct("week_start", {"child_id": child_id}), reverse=True)
 
 
-def load_week(db: Database, child_id: str, week_start: date) -> SyncPayload | None:
+LEVELS = list(get_args(Level))  # healthy < watch < concerning < crisis
+
+
+def load_week(db: Database, child_id: str, week_start: date) -> WeekSummary | None:
+    """The child's week with every device added up: minutes and counts are summed, the level and
+    score are the highest any device reported (levels can't be added), paid if any device is paid."""
     week = week_start.isoformat()
-    sites = list(db.weekly_aggregates.find(
-        {"child_id": child_id, "week_start": week},
-        {"_id": 0, "child_id": 0, "week_start": 0, "synced_at": 0},
-    ).sort("site"))
-    if not sites:
+    per_site = list(db.weekly_aggregates.aggregate([
+        {"$match": {"child_id": child_id, "week_start": week}},
+        {"$group": {
+            "_id": "$site",
+            "level_rank": {"$max": {"$indexOfArray": [LEVELS, "$level"]}},
+            "score": {"$max": "$score"},
+            "active_minutes": {"$sum": "$active_minutes"},
+            "late_night_sessions": {"$sum": "$late_night_sessions"},
+            "voice_minutes": {"$sum": "$voice_minutes"},
+            "nudges_shown": {"$sum": "$nudges_shown"},
+            "privacy_pauses": {"$sum": "$privacy_pauses"},
+            "paid": {"$push": "$paid_tier"},
+            "devices": {"$addToSet": "$device_id"},
+        }},
+        {"$sort": {"_id": 1}},
+    ]))
+    if not per_site:
         return None
+    devices = set().union(*(r["devices"] for r in per_site))
+    sites = [{
+        "site": r["_id"], "level": LEVELS[r["level_rank"]], "score": r["score"],
+        "active_minutes": r["active_minutes"], "late_night_sessions": r["late_night_sessions"],
+        "voice_minutes": r["voice_minutes"], "nudges_shown": r["nudges_shown"], "privacy_pauses": r["privacy_pauses"],
+        "paid_tier": True if True in r["paid"] else (False if False in r["paid"] else None),
+    } for r in per_site]
+
     start, end = _week_range(week_start)
-    # Let MongoDB turn timestamps back into date + hour.
+    # Let MongoDB add up the devices' counts and turn timestamps back into date + hour.
     hourly = list(db.hourly_topics.aggregate([
         {"$match": {"meta.child_id": child_id, "ts": {"$gte": start, "$lt": end}}},
-        {"$sort": {"ts": 1, "meta.topic": 1}},
+        {"$group": {"_id": {"ts": "$ts", "topic": "$meta.topic"}, "count": {"$sum": "$count"}}},
+        {"$sort": {"_id.ts": 1, "_id.topic": 1}},
         {"$project": {
             "_id": 0,
-            "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$ts"}},
-            "hour": {"$hour": "$ts"},
-            "topic": "$meta.topic",
+            "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$_id.ts"}},
+            "hour": {"$hour": "$_id.ts"},
+            "topic": "$_id.topic",
             "count": 1,
         }},
     ]))
-    return SyncPayload(child_id=child_id, week_start=week_start, sites=sites, hourly_topics=hourly)
+    return WeekSummary(child_id=child_id, week_start=week_start, devices=len(devices), sites=sites, hourly_topics=hourly)
 
 
 def topic_trend(db: Database, child_id: str, week_start: date) -> list[TopicTrend]:

@@ -1,5 +1,6 @@
 {
   "child_id": "demo",
+  "device_id": "sample",
   "week_start": "2026-09-01",
   "sites": [
     {

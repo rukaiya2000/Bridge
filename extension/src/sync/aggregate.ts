@@ -15,6 +15,7 @@ export type PerDaySite = Record<string, Partial<Record<Site, number>>>;
 
 export interface SyncPayload {
   child_id: string;
+  device_id: string;
   week_start: string;
   sites: {
     site: Site;
@@ -32,6 +33,7 @@ export interface SyncPayload {
 
 export interface AggregateInput {
   childId: string;
+  deviceId: string;
   now: number;
   profiles: Partial<Record<Site, Profile>>;
   hourly: HourlyTopics;
@@ -69,7 +71,7 @@ export function buildPayload(input: AggregateInput): SyncPayload {
       site: p.site,
       level,
       score,
-      active_minutes: p.days.reduce((n, d) => n + d.activeMinutes, 0),
+      active_minutes: Math.round(p.days.reduce((n, d) => n + d.activeMinutes, 0)), // tracked in fractions of a minute
       late_night_sessions: p.days.reduce((n, d) => n + d.lateNightSessions, 0),
       voice_minutes: sumDays(input.voiceMinutes, p.site),
       nudges_shown: sumDays(input.nudges, p.site),
@@ -87,7 +89,7 @@ export function buildPayload(input: AggregateInput): SyncPayload {
     }
   }
 
-  return { child_id: input.childId, week_start: start, sites, hourly_topics };
+  return { child_id: input.childId, device_id: input.deviceId, week_start: start, sites, hourly_topics };
 }
 
 // Keeps the last `keep` days of a per-day record (older days can no longer be in a synced week).

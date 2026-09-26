@@ -2,6 +2,7 @@ import { Mutex } from "async-mutex";
 import { core } from "@bridge/core";
 import { LEVELS, type Level, type Site, type Turn, type TurnLabels } from "../../../core/src/types";
 import { dayKey, isLateNight } from "../../../core/src/time";
+import { addActiveMinutes, startSession } from "../../../core/src/profile";
 import type { ToContent, ToOffscreen, ToWorker } from "../messages";
 import * as store from "../storage";
 import { buildPayload, pruneDays } from "../sync/aggregate";
@@ -13,6 +14,9 @@ const SESSION_IDLE_MS = 10 * 60_000;
 const LATE_NIGHT_MIN_MS = 60 * 60_000;
 const NUDGES_PER_DAY = 3;
 const SYNC_DEBOUNCE_MS = 5_000;
+// Heartbeats come every 30 s while the teen is active. A longer gap (laptop asleep, tab in the
+// background) is not counted as time on AI.
+const MAX_BEAT_GAP_MS = 2 * 60_000;
 
 // Text lives only here, in memory, until the turn is labeled.
 const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boolean; timer: ReturnType<typeof setTimeout> }>();
@@ -125,11 +129,21 @@ async function recordTurn(user: Turn, labels: TurnLabels, tabId: number | undefi
 async function onHeartbeat(site: Site, ts: number, interacting: boolean, tabId?: number) {
   await closeIdleSessions(ts);
   if (!interacting) return;
-  const sessions = await store.get("sessions");
-  const cur = sessions.current[site] ?? { start: ts, lastBeat: ts };
-  cur.lastBeat = ts;
+  const [sessions, profiles] = await Promise.all([store.get("sessions"), store.get("profiles")]);
+  let profile = profiles[site] ?? core.emptyProfile(site);
+  let cur = sessions.current[site];
+  if (!cur) {
+    // Counted when it opens (not when it closes), so the dashboard is current during a session.
+    cur = { start: ts, lastBeat: ts };
+    profile = startSession(profile, ts);
+  } else {
+    const gap = ts - cur.lastBeat;
+    if (gap > 0 && gap <= MAX_BEAT_GAP_MS) profile = addActiveMinutes(profile, ts, gap / 60_000);
+    cur.lastBeat = ts;
+  }
   sessions.current[site] = cur;
-  await store.set("sessions", sessions);
+  profiles[site] = profile;
+  await Promise.all([store.set("sessions", sessions), store.set("profiles", profiles)]);
 
   if (isLateNight(cur.start) && ts - cur.start >= LATE_NIGHT_MIN_MS) {
     const level = (await store.get("state"))[site]?.level ?? "healthy";
@@ -144,9 +158,10 @@ async function closeIdleSessions(now: number) {
   const profiles = await store.get("profiles");
   const state = await store.get("state");
   for (const site of closed) {
-    const { start, lastBeat } = sessions.current[site]!;
+    // Minutes and the session itself were already counted live (onHeartbeat); just end it.
+    const { lastBeat } = sessions.current[site]!;
     delete sessions.current[site];
-    profiles[site] = core.recordSession(profiles[site] ?? core.emptyProfile(site), { site, start, end: lastBeat, paidTier: null });
+    profiles[site] ??= core.emptyProfile(site);
     await onVoice(site, false, lastBeat);
   }
   for (const site of closed) {
@@ -257,7 +272,7 @@ async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus
       store.get("privacyLog"),
     ]);
     const payload = buildPayload({
-      childId: settings.childId, now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog, privacy: privacyLog,
+      childId: settings.childId, deviceId: await store.deviceId(), now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog, privacy: privacyLog,
     });
     return { settings, payload };
   });

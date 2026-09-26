@@ -34,6 +34,7 @@ async function loadSettings() {
   $<HTMLInputElement>("strict").checked = s.privacyStrict;
   $<HTMLInputElement>("api").value = s.apiUrl;
   $<HTMLInputElement>("child").value = s.childId;
+  $("device").textContent = await store.deviceId();
 }
 
 $("save").addEventListener("click", async () => {

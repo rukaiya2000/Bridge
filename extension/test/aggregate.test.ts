@@ -8,7 +8,7 @@ import { buildPayload, weekStartKey, type AggregateInput } from "../src/sync/agg
 const NOW = BASE + 2 * DAY + 12 * 3_600_000; // Thu 12:00
 
 const input = (profiles: Partial<Record<"gemini" | "characterai", Profile>>, o: Partial<AggregateInput> = {}): AggregateInput => ({
-  childId: "kid", now: NOW, profiles, hourly: {}, voiceMinutes: {}, nudges: {}, ...o,
+  childId: "kid", deviceId: "dev-1", now: NOW, profiles, hourly: {}, voiceMinutes: {}, nudges: {}, ...o,
 });
 
 const withTurns = (...turns: [Parameters<typeof labels>[0], number][]): Profile =>

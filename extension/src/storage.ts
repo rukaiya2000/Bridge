@@ -33,6 +33,9 @@ export interface Store {
   hourly: HourlyTopics;
   nudgeLog: PerDaySite;
   privacyLog: PerDaySite; // privacy pauses per day and site (counts only)
+  // Random id for this browser install. Several devices can share one childId; the API adds them up.
+  // Its own key, not in settings, so saving the options page never replaces it.
+  device: { id: string } | null;
   syncStatus: { at: number; ok: boolean; message: string } | null;
 }
 
@@ -54,6 +57,7 @@ export const DEFAULTS: Store = {
   hourly: {},
   nudgeLog: {},
   privacyLog: {},
+  device: null,
   syncStatus: null,
 };
 
@@ -101,4 +105,13 @@ export async function set<K extends keyof Store>(key: K, value: Store[K]): Promi
 
 export async function resetData(): Promise<void> {
   await chrome.storage.local.remove(["profiles", "state", "sessions", "nudges", "debug", "voice", "hourly", "nudgeLog", "privacyLog", "syncStatus"]);
+}
+
+// Creates this install's device id on first use.
+export async function deviceId(): Promise<string> {
+  const device = await get("device");
+  if (device) return device.id;
+  const id = crypto.randomUUID();
+  await set("device", { id });
+  return id;
 }

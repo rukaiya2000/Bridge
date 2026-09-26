@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pymongo.database import Database
 
 from api import db as store
-from api.models import Starter, SyncPayload, ToolRating, TopicTrend
+from api.models import Starter, SyncPayload, ToolRating, TopicTrend, WeekSummary
 
 
 @asynccontextmanager
@@ -74,7 +74,7 @@ def weeks(child_id: str, db: Db) -> list[str]:
 
 
 @app.get("/children/{child_id}/weeks/{week_start}")
-def week(child_id: str, week_start: date, db: Db) -> SyncPayload:
+def week(child_id: str, week_start: date, db: Db) -> WeekSummary:
     found = store.load_week(db, child_id, week_start)
     if found is None:
         raise HTTPException(404, "no data for that week")

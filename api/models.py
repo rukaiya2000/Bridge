@@ -39,7 +39,10 @@ class SiteAggregate(Strict):
 
 
 class SyncPayload(Strict):
+    """One device's week. Several devices (browsers) can report for the same child_id."""
     child_id: str
+    # Random per browser install. Older extensions don't send it; they count as one "legacy" device.
+    device_id: str = Field(default="legacy", min_length=1, max_length=64)
     week_start: date
     sites: list[SiteAggregate]
     hourly_topics: list[HourlyTopicCount]
@@ -77,3 +80,12 @@ class Starter(Strict):
     """Vetted conversation starter (desc.md feature 2). `topic` is a Topic or "default"."""
     topic: Topic | Literal["default"]
     text: str
+
+
+class WeekSummary(Strict):
+    """A child's week as the parent sees it: every device added up (api/db.py load_week)."""
+    child_id: str
+    week_start: date
+    devices: int
+    sites: list[SiteAggregate]
+    hourly_topics: list[HourlyTopicCount]

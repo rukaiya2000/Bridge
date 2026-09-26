@@ -198,10 +198,18 @@ export interface components {
             /** Text */
             text: string;
         };
-        /** SyncPayload */
+        /**
+         * SyncPayload
+         * @description One device's week. Several devices (browsers) can report for the same child_id.
+         */
         SyncPayload: {
             /** Child Id */
             child_id: string;
+            /**
+             * Device Id
+             * @default legacy
+             */
+            device_id: string;
             /**
              * Week Start
              * Format: date
@@ -267,6 +275,25 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WeekSummary
+         * @description A child's week as the parent sees it: every device added up (api/db.py load_week).
+         */
+        WeekSummary: {
+            /** Child Id */
+            child_id: string;
+            /**
+             * Week Start
+             * Format: date
+             */
+            week_start: string;
+            /** Devices */
+            devices: number;
+            /** Sites */
+            sites: components["schemas"]["SiteAggregate"][];
+            /** Hourly Topics */
+            hourly_topics: components["schemas"]["HourlyTopicCount"][];
         };
     };
     responses: never;
@@ -383,7 +410,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SyncPayload"];
+                    "application/json": components["schemas"]["WeekSummary"];
                 };
             };
             /** @description Validation Error */

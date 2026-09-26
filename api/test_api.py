@@ -18,6 +18,7 @@ def test_sync_roundtrip(client):
     got = client.get(WEEK).json()
     by_site = lambda sites: sorted(sites, key=lambda x: x["site"])
     assert by_site(got["sites"]) == by_site(PAYLOAD["sites"])
+    assert got["devices"] == 1
     key = lambda t: (t["date"], t["hour"], t["topic"])
     assert sorted(got["hourly_topics"], key=key) == sorted(PAYLOAD["hourly_topics"], key=key)
 
@@ -110,3 +111,39 @@ def test_every_site_has_a_curated_rating(client):
 def test_starters_include_a_default(client):
     topics = {s["topic"] for s in client.get("/starters").json()}
     assert "default" in topics and "loneliness" in topics
+
+
+def _device(device_id: str, site: str = "gemini", **fields) -> dict:
+    base = {"site": site, "level": "healthy", "score": 1.0, "active_minutes": 10, "late_night_sessions": 0,
+            "voice_minutes": 0, "nudges_shown": 0, "privacy_pauses": 0, "paid_tier": None}
+    return {"child_id": "teen", "device_id": device_id, "week_start": "2026-09-01",
+            "sites": [{**base, **fields}], "hourly_topics": []}
+
+
+def test_devices_of_one_child_add_up(client):
+    client.post("/sync", json=_device("laptop", active_minutes=30, late_night_sessions=1, nudges_shown=1, level="watch", score=4.0))
+    client.post("/sync", json=_device("chromebook", active_minutes=45, late_night_sessions=2, level="concerning", score=8.5, paid_tier=True))
+    week = client.get("/children/teen/weeks/2026-09-01").json()
+    assert week["devices"] == 2
+    assert week["sites"] == [{
+        "site": "gemini", "level": "concerning", "score": 8.5,  # highest across devices, not added
+        "active_minutes": 75, "late_night_sessions": 3, "voice_minutes": 0, "nudges_shown": 1, "privacy_pauses": 0,
+        "paid_tier": True,
+    }]
+
+
+def test_a_device_resync_replaces_only_its_own_data(client):
+    client.post("/sync", json=_device("laptop", active_minutes=30))
+    client.post("/sync", json=_device("chromebook", active_minutes=45))
+    client.post("/sync", json=_device("laptop", active_minutes=35))  # laptop's newer snapshot
+    assert client.get("/children/teen/weeks/2026-09-01").json()["sites"][0]["active_minutes"] == 80
+
+
+def test_hourly_topics_from_devices_add_up(client):
+    hour = {"date": "2026-09-02", "hour": 23, "topic": "loneliness", "count": 2}
+    client.post("/sync", json={**_device("laptop"), "hourly_topics": [hour]})
+    client.post("/sync", json={**_device("chromebook"), "hourly_topics": [{**hour, "count": 3}]})
+    assert client.get("/children/teen/weeks/2026-09-01").json()["hourly_topics"] == [{**hour, "count": 5}]
+    trend = client.get("/children/teen/weeks/2026-09-01/topics").json()
+    assert trend[0]["this_week"] == 5
+

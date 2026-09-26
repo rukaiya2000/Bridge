@@ -42,6 +42,21 @@ export function updateProfile(p: Profile, labels: TurnLabels, ts: number): Profi
   });
 }
 
+// Live session tracking (the extension): open a session when it starts, then add active minutes as
+// they happen, so the week's totals are current while the teen is still chatting.
+// startSession + addActiveMinutes(total) gives the same bucket as recordSession.
+export function startSession(p: Profile, ts: number): Profile {
+  return withBucket(p, ts, (b) => {
+    b.sessions += 1;
+    if (isLateNight(ts)) b.lateNightSessions += 1;
+  });
+}
+
+export function addActiveMinutes(p: Profile, ts: number, minutes: number): Profile {
+  return withBucket(p, ts, (b) => { b.activeMinutes += minutes; });
+}
+
+// Whole finished session at once (eval replays of labeled arcs).
 export function recordSession(p: Profile, s: SessionEvent): Profile {
   return withBucket(p, s.start, (b) => {
     b.sessions += 1;

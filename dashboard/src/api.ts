@@ -4,7 +4,7 @@ import createClient from "openapi-fetch";
 import type { components, paths } from "./api-schema";
 
 type Schemas = components["schemas"];
-export type Week = Schemas["SyncPayload"];
+export type Week = Schemas["WeekSummary"]; // all of the child's devices added up
 export type SiteAggregate = Schemas["SiteAggregate"];
 export type TopicTrend = Schemas["TopicTrend"];
 export type ToolRating = Schemas["ToolRating"];

@@ -58,7 +58,10 @@ export function App() {
             <Burger opened={navOpen} onClick={nav.toggle} hiddenFrom="sm" size="sm" />
             <Box visibleFrom="xs">
               <Title order={3}>Weekly overview</Title>
-              <Text size="xs" c="dimmed">How your teen's week with AI chatbots went</Text>
+              <Text size="xs" c="dimmed">
+                How your teen's week with AI chatbots went
+                {week.data ? ` · ${week.data.devices} ${week.data.devices === 1 ? "device" : "devices"}` : ""}
+              </Text>
             </Box>
           </Group>
           <Group gap="sm" wrap="nowrap">

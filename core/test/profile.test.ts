@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyProfile, recordSession, updateProfile } from "../src/profile.js";
+import { addActiveMinutes, emptyProfile, recordSession, startSession, updateProfile } from "../src/profile.js";
 import { BASE, DAY, labels } from "./helpers.js";
 
 describe("profile", () => {
@@ -30,5 +30,13 @@ describe("profile", () => {
     let p = updateProfile(emptyProfile("gemini"), labels(), BASE + 23.5 * 3600_000);
     p = recordSession(p, { site: "gemini", start: BASE + 23.5 * 3600_000, end: BASE + 24.25 * 3600_000, paidTier: null });
     expect(p.days[0]).toMatchObject({ lateNightTurns: 1, sessions: 1, lateNightSessions: 1, activeMinutes: 45 });
+  });
+
+  it("live tracking (start + minutes as they happen) matches recording the whole session", () => {
+    const start = BASE + 23 * 3600_000, end = start + 45 * 60_000;
+    const whole = recordSession(emptyProfile("gemini"), { site: "gemini", start, end, paidTier: null });
+    let live = startSession(emptyProfile("gemini"), start);
+    for (let t = start; t < end; t += 30_000) live = addActiveMinutes(live, t, 0.5);
+    expect(live.days).toEqual(whole.days);
   });
 });
