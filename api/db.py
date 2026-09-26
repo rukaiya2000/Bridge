@@ -59,7 +59,8 @@ def connect() -> MongoClient:
     uri = os.environ.get("MONGODB_URI")
     if not uri:
         raise RuntimeError("MONGODB_URI is not set. Put your Atlas connection string in .env (see .env.example).")
-    return MongoClient(uri, tz_aware=True)
+    # Fail in 5 s instead of pymongo's default 30 s, so an unreachable Atlas shows up as an error, not a hang.
+    return MongoClient(uri, tz_aware=True, serverSelectionTimeoutMS=5000)
 
 
 def database(client: MongoClient) -> Database:

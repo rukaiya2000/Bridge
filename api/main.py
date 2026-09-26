@@ -15,6 +15,8 @@ from typing import Annotated
 from bson import ObjectId
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pymongo.errors import ConnectionFailure
 from pymongo.database import Database
 
 from api import auth
@@ -47,6 +49,16 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(ConnectionFailure)
+def mongo_unreachable(request: Request, exc: ConnectionFailure) -> JSONResponse:
+    """MongoDB can't be reached (wrong MONGODB_URI, or this IP isn't in Atlas → Network Access)."""
+    log.error("MongoDB unreachable: %s", exc)
+    return JSONResponse(
+        {"detail": "The API can't reach MongoDB. Check MONGODB_URI in .env and that your IP is allowed in Atlas → Network Access."},
+        status_code=503,
+    )
+
+
 def get_db(request: Request) -> Database:
     return request.app.state.db
 
@@ -76,9 +88,20 @@ def logout(session: CurrentSession, db: Db) -> dict:
     return {"ok": True}
 
 
+@app.post("/auth/session")
+def extra_session(session: CurrentSession, db: Db) -> LoginResult:
+    """The extension picks up the dashboard's login in the same browser: it trades the dashboard's
+    token for its own (extension/src/content/dashboard.ts)."""
+    return LoginResult(token=auth.extra_session(db, session.account_id), email=_email(db, session.account_id))
+
+
+def _email(db: Database, account_id: str) -> str:
+    return db.accounts.find_one({"_id": ObjectId(account_id)})["email"]
+
+
 @app.get("/auth/me")
 def me(session: CurrentSession, db: Db) -> Me:
-    return Me(email=db.accounts.find_one({"_id": ObjectId(session.account_id)})["email"])
+    return Me(email=_email(db, session.account_id))
 
 
 @app.post("/sync")

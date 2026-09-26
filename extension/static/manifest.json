@@ -16,7 +16,8 @@
       "matches": ["https://chatgpt.com/*", "https://claude.ai/*", "https://character.ai/*"],
       "js": ["content-session.js"],
       "run_at": "document_idle"
-    }
+    },
+    { "matches": ["http://localhost/*", "http://127.0.0.1/*"], "js": ["content-dashboard.js"], "run_at": "document_idle" }
   ],
   "permissions": ["storage", "alarms", "offscreen"],
   "host_permissions": ["https://api.navigator.ai.ufl.edu/*", "http://localhost/*", "http://127.0.0.1/*"],

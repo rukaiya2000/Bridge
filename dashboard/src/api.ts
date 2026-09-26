@@ -11,7 +11,9 @@ export type ToolRating = Schemas["ToolRating"];
 export type Level = SiteAggregate["level"];
 
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-const api = createClient<paths>({ baseUrl: API_URL });
+const TIMEOUT_MS = 15_000;
+// Without a timeout a stuck API leaves the login button spinning forever.
+const api = createClient<paths>({ baseUrl: API_URL, fetch: (req: Request) => fetch(req, { signal: AbortSignal.timeout(TIMEOUT_MS) }) });
 
 // The logged-in account (api/auth.py). Kept in localStorage so a reload stays logged in.
 export type Session = Schemas["LoginResult"];
@@ -25,7 +27,13 @@ export function loadSession(): Session | null {
   }
 }
 
+// The Bridge extension, if installed in this browser, listens for this and logs in too
+// (extension/src/content/dashboard.ts). The token stays on this page's origin.
+export const announceSession = (s: Session | null) =>
+  window.postMessage({ bridge: "dashboard-session", session: s }, window.location.origin);
+
 export function saveSession(s: Session | null) {
+  announceSession(s);
   try {
     if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
     else localStorage.removeItem(SESSION_KEY);
@@ -50,20 +58,27 @@ function ok<T>(res: { data?: T; error?: unknown; response: Response }, what: str
   return res.data;
 }
 
-// Login and sign-up errors are shown to the user, so pass the API's message through.
-async function authed(res: { data?: Session; error?: unknown }): Promise<Session> {
+// Login and sign-up errors are shown to the user, so say what actually went wrong.
+async function authed(call: Promise<{ data?: Session; error?: unknown; response: Response }>): Promise<Session> {
+  let res;
+  try {
+    res = await call;
+  } catch (e) {
+    const timedOut = e instanceof DOMException && e.name === "TimeoutError";
+    throw new Error(timedOut
+      ? `The Bridge API at ${API_URL} didn't answer within ${TIMEOUT_MS / 1000} s. Check its terminal for errors.`
+      : `Can't reach the Bridge API at ${API_URL}. Is it running? (uv run --group api uvicorn api.main:app --reload)`);
+  }
   if (res.data) return res.data;
   const detail = (res.error as { detail?: unknown } | undefined)?.detail;
   if (typeof detail === "string") throw new Error(detail);
   if (Array.isArray(detail)) throw new Error("Enter a valid email and a password of at least 8 characters");
-  throw new Error(`Can't reach the Bridge API at ${API_URL}`);
+  throw new Error(`The Bridge API had an error (HTTP ${res.response.status}). Check its terminal for details.`);
 }
 
-export const logIn = async (email: string, password: string) =>
-  authed(await api.POST("/auth/login", { body: { email, password } }).catch(() => ({ data: undefined, error: undefined })));
+export const logIn = (email: string, password: string) => authed(api.POST("/auth/login", { body: { email, password } }));
 
-export const signUp = async (email: string, password: string) =>
-  authed(await api.POST("/auth/signup", { body: { email, password } }).catch(() => ({ data: undefined, error: undefined })));
+export const signUp = (email: string, password: string) => authed(api.POST("/auth/signup", { body: { email, password } }));
 
 export const logOut = async () => {
   await api.POST("/auth/logout").catch(() => {});

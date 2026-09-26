@@ -126,6 +126,30 @@
         ]
       }
     },
+    "/auth/session": {
+      "post": {
+        "summary": "Extra Session",
+        "description": "The extension picks up the dashboard's login in the same browser: it trades the dashboard's\ntoken for its own (extension/src/content/dashboard.ts).",
+        "operationId": "extra_session_auth_session_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/auth/me": {
       "get": {
         "summary": "Me",

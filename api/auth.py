@@ -49,6 +49,11 @@ def login(db: Database, email: str, password: str) -> str:
     return _new_session(db, str(account["_id"]))
 
 
+def extra_session(db: Database, account_id: str) -> str:
+    """A second login for the same account, so the extension can log out separately from the dashboard."""
+    return _new_session(db, account_id)
+
+
 def logout(db: Database, token: str) -> None:
     db.sessions.delete_one({"token": token})
 

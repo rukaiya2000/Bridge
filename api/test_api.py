@@ -191,3 +191,23 @@ def test_new_feelings_sync(client):
     week = {**PAYLOAD, "hourly_topics": [{"date": "2026-09-02", "hour": 20, "topic": f, "count": 1} for f in feelings]}
     assert client.post("/sync", json=week).status_code == 200
     assert {t["topic"] for t in client.get(WEEK + "/topics").json()} == set(feelings)
+
+
+def test_unreachable_mongo_is_a_clear_503(anon, monkeypatch):
+    from pymongo.errors import ServerSelectionTimeoutError
+
+    def down(*a, **k):
+        raise ServerSelectionTimeoutError("no servers")
+    monkeypatch.setattr("api.auth.login", down)
+    res = TestClient(app, raise_server_exceptions=False).post("/auth/login", json={"email": "a@example.com", "password": "correct horse"})
+    assert res.status_code == 503 and "MongoDB" in res.json()["detail"]
+
+
+def test_extension_gets_its_own_session_from_the_dashboards(client):
+    dashboard = client.headers["authorization"]
+    res = client.post("/auth/session")
+    assert res.json()["email"] == "tester@example.com"
+    extension = {"authorization": f"Bearer {res.json()['token']}"}
+    client.post("/auth/logout")  # dashboard logs out
+    assert client.get("/auth/me", headers={"authorization": dashboard}).status_code == 401
+    assert client.get("/auth/me", headers=extension).status_code == 200  # extension still logged in
