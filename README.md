@@ -49,7 +49,7 @@ npm run build -w core && npm test -w core
 ```bash
 npm run build -w extension
 ```
-Then in Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/dist`. Paste your Gemini key on the extension's options page. The default build uses the core stub (type `#dep`, `#iso`, `#hook`, `#lonely`, `#crisis`, `#abuse` in Gemini to trigger labels). Use `npm run build:real -w extension` for the real core.
+Then in Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/dist`. Paste your Gemini key on the extension's options page. Without a key the extension runs the on-device rules only (crisis and abuse phrases from `core/src/lexicon.ts`); with a key, Gemini adds the other labels.
 
 **Spoken nudges** (feature 8, needs `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` in `.env`)
 ```bash

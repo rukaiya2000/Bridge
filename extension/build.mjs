@@ -1,16 +1,15 @@
-// Builds the extension into dist/. BRIDGE_CORE=real swaps the stub for ../core.
+// Builds the extension into dist/.
 import * as esbuild from "esbuild";
 import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 
 const watch = process.argv.includes("--watch");
-const real = process.env.BRIDGE_CORE === "real";
 
 const common = {
   bundle: true,
   target: "chrome120",
   sourcemap: true,
   logLevel: "info",
-  alias: { "@bridge/core": real ? "../core/src/index.ts" : "./src/core-stub.ts" },
+  alias: { "@bridge/core": "../core/src/index.ts" },
 };
 
 const entries = [
@@ -42,9 +41,9 @@ const contexts = await Promise.all(
 
 if (watch) {
   await Promise.all(contexts.map((c) => c.watch()));
-  console.log(`watching (core: ${real ? "real" : "stub"})`);
+  console.log("watching");
 } else {
   await Promise.all(contexts.map((c) => c.rebuild()));
   await Promise.all(contexts.map((c) => c.dispose()));
-  console.log(`built dist/ (core: ${real ? "real" : "stub"})`);
+  console.log("built dist/");
 }

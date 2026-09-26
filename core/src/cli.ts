@@ -1,6 +1,6 @@
 // Node-only CLI used by eval/. JSONL in on stdin, JSONL out on stdout, one line per input line.
 //   node core/dist/cli.js label [--rules-only] [--concurrency 4]
-//   node core/dist/cli.js score --mode pattern|single
+//   node core/dist/cli.js score --mode pattern|single [--tz UTC]   (fixtures are UTC)
 import { createInterface } from "node:readline";
 import process from "node:process";
 import { core } from "./index.js";
@@ -46,7 +46,7 @@ function score(lines: string[]) {
   if (mode !== "pattern" && mode !== "single") throw new Error("--mode must be pattern or single");
   lines.forEach((line, i) => {
     try {
-      process.stdout.write(JSON.stringify(scoreArc(JSON.parse(line), mode)) + "\n");
+      process.stdout.write(JSON.stringify(scoreArc(JSON.parse(line), mode, flag("--tz") ?? "UTC")) + "\n");
     } catch (e) {
       process.stderr.write(`line ${i + 1}: ${(e as Error).message}\n`);
       process.stdout.write(JSON.stringify({ id: null, error: true }) + "\n");
@@ -58,6 +58,6 @@ const cmd = args[0];
 if (cmd === "label") await label(await readLines());
 else if (cmd === "score") score(await readLines());
 else if (cmd) {
-  process.stderr.write("usage: cli.js label [--rules-only] [--concurrency N] | score --mode pattern|single\n");
+  process.stderr.write("usage: cli.js label [--rules-only] [--concurrency N] | score --mode pattern|single [--tz UTC]\n");
   process.exit(2);
 }

@@ -1,7 +1,7 @@
 // Feature 8: turns the fixed nudge and crisis scripts into MP3s with ElevenLabs text-to-speech.
 // Run once at build time: `npm run voice -w extension`. Needs ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID in ../.env.
 // ElevenLabs only ever sees these fixed scripts, never anything about the child.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 try { process.loadEnvFile(new URL("../../.env", import.meta.url).pathname); } catch { /* use the shell environment */ }
 
@@ -12,13 +12,11 @@ if (!key || !voice) {
   process.exit(1);
 }
 
-// Keep the nudge lines in sync with src/ui/nudge.ts.
+// Nudges are spoken exactly as shown on screen (src/ui/nudges.json). Crisis clips are written for
+// speech (numbers read digit by digit), so they live here.
+const NUDGES = JSON.parse(readFileSync(new URL("../src/ui/nudges.json", import.meta.url), "utf8"));
 const CLIPS = {
-  "nudge-0": "Hey. Chatbots are built to keep you talking. Who's someone real you could tell this to?",
-  "nudge-1": "It's getting late. Things often feel lighter after some sleep. Want to pick this up tomorrow?",
-  "nudge-2": "You've been sharing a lot here. Is there a friend who'd want to hear some of it too?",
-  "nudge-3": "An AI can listen, but it can't show up for you. Who in your life can?",
-  "nudge-4": "Quick check-in. How long have you been chatting? A short break can help.",
+  ...Object.fromEntries(NUDGES.map((text, i) => [`nudge-${i}`, text])),
   "crisis": "You don't have to handle this alone. You can call or text 9 8 8 right now, any time. It's free and confidential. You can also text HOME to 7 4 1 7 4 1. If you're in immediate danger, call 9 1 1.",
   "crisis-abuse": "You don't have to handle this alone. You can call or text 9 8 8 right now, any time. You can also call or text Childhelp at 1 800 4 2 2 4 4 5 3. It's free and confidential. If you're in immediate danger, call 9 1 1.",
 };

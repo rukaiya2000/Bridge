@@ -1,27 +1,35 @@
+import { Mutex } from "async-mutex";
 import { core } from "@bridge/core";
-import type { Level, Site, Turn } from "../../../core/src/types";
+import { LEVELS, type Level, type Site, type Turn, type TurnLabels } from "../../../core/src/types";
+import { dayKey, isLateNight } from "../../../core/src/time";
 import type { ToContent, ToOffscreen, ToWorker } from "../messages";
 import * as store from "../storage";
-import { dayKey, isLateNight } from "../time";
+import NUDGES from "../ui/nudges.json";
 
 const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
 const LATE_NIGHT_MIN_MS = 60 * 60_000;
 const NUDGES_PER_DAY = 3;
-const NUDGE_VARIANTS = 5;
-const RANK: Record<Level, number> = { healthy: 0, watch: 1, concerning: 2, crisis: 3 };
 
 // Text lives only here, in memory, until the turn is labeled.
 const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boolean; timer: ReturnType<typeof setTimeout> }>();
 
+// Every read-change-write of chrome.storage runs under this lock. Heartbeats, turns and the
+// session alarm otherwise interleave across awaits and overwrite each other's updates.
+// Entry points take the lock; the helpers they call assume it is held (never lock twice).
+const storageLock = new Mutex();
+const locked = <T>(fn: () => Promise<T>) => storageLock.runExclusive(fn);
+
 chrome.runtime.onInstalled.addListener(() => chrome.alarms.create("sessions", { periodInMinutes: 1 }));
-chrome.alarms.onAlarm.addListener((a) => { if (a.name === "sessions") void closeIdleSessions(Date.now()); });
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a.name === "sessions") void locked(() => closeIdleSessions(Date.now()));
+});
 
 chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   const tabId = sender.tab?.id;
   if (msg.type === "turn") void onTurn(msg.turn, tabId);
-  if (msg.type === "heartbeat") void onHeartbeat(msg.site, msg.ts, msg.interacting, tabId);
-  if (msg.type === "voice") void onVoice(msg.site, msg.active, msg.ts);
+  if (msg.type === "heartbeat") void locked(() => onHeartbeat(msg.site, msg.ts, msg.interacting, tabId));
+  if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
   return false;
 });
 
@@ -58,10 +66,14 @@ async function onTurn(turn: Turn, tabId?: number) {
 }
 
 async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefined, crisisShown: boolean) {
+  // Label outside the lock: the Gemini call can take seconds and must not stall heartbeats.
   const settings = await store.get("settings");
   const labels = await core.labelTurn(user, bot, { geminiKey: settings.geminiKey || undefined, model: settings.model });
   if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
+  await locked(() => recordTurn(user, labels, tabId));
+}
 
+async function recordTurn(user: Turn, labels: TurnLabels, tabId: number | undefined) {
   const site = user.site;
   const profiles = await store.get("profiles");
   profiles[site] = core.updateProfile(profiles[site] ?? core.emptyProfile(site), labels, user.ts);
@@ -76,7 +88,7 @@ async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefin
   debug.recentLabels = [{ ts: user.ts, site, labels }, ...debug.recentLabels].slice(0, 20);
   await store.set("debug", debug);
 
-  if (RANK[result.level] > RANK[previous] && (result.level === "watch" || result.level === "concerning")) {
+  if (LEVELS.indexOf(result.level) > LEVELS.indexOf(previous) && (result.level === "watch" || result.level === "concerning")) {
     await maybeNudge(site, tabId, result.level);
   }
 }
@@ -130,7 +142,7 @@ async function maybeNudge(site: Site, tabId: number | undefined, level: Level) {
   if (sessionStart !== undefined && nudges.nudgedSessionStarts.includes(sessionStart)) return;
   if (nudges.countToday >= NUDGES_PER_DAY) return;
 
-  const variant = nudges.countToday % NUDGE_VARIANTS;
+  const variant = nudges.countToday % NUDGES.length;
   nudges.countToday += 1;
   if (sessionStart !== undefined) nudges.nudgedSessionStarts.push(sessionStart);
   await store.set("nudges", nudges);

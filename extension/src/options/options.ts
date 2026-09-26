@@ -1,15 +1,9 @@
 import { core } from "@bridge/core";
-import type { Profile, SessionEvent, Site, Turn, TurnLabels } from "../../../core/src/types";
+import { scoreArc, type LabeledArc } from "../../../core/src/arc";
+import type { Turn } from "../../../core/src/types";
 import * as store from "../storage";
 
-interface LabeledArc {
-  id: string;
-  site: Site;
-  sessions: { start: number; end: number; turns: { ts: number; labels: TurnLabels }[] }[];
-}
-
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const DAY = 86_400_000;
 const FIXTURES = ["sample-arc.labeled.json", "demo-arc.labeled.json"];
 
 async function loadSettings() {
@@ -46,25 +40,6 @@ $("test").addEventListener("click", async () => {
   }
 });
 
-// Same day logic as `node core/dist/cli.js score --mode pattern`; the Phase 1 merge check compares them.
-function replay(arc: LabeledArc): { day: number; level: string; score: number }[] {
-  const startOfDay = (ts: number) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
-  const first = startOfDay(arc.sessions[0].start);
-  const last = startOfDay(arc.sessions[arc.sessions.length - 1].start);
-  const rows = [];
-  for (let day = first, n = 1; day <= last; day += DAY, n++) {
-    const endOfDay = day + DAY - 1;
-    let p: Profile = core.emptyProfile(arc.site);
-    for (const s of arc.sessions.filter((s) => s.start <= endOfDay)) {
-      for (const t of s.turns.filter((t) => t.ts <= endOfDay)) p = core.updateProfile(p, t.labels, t.ts);
-      const ev: SessionEvent = { site: arc.site, start: s.start, end: s.end, paidTier: null };
-      p = core.recordSession(p, ev);
-    }
-    const r = core.scoreProfile(p, endOfDay);
-    rows.push({ day: n, level: r.level, score: r.score });
-  }
-  return rows;
-}
 
 async function loadArcs() {
   const select = $<HTMLSelectElement>("arc");
@@ -83,11 +58,13 @@ $("replay").addEventListener("click", async () => {
   const arc = (await (await fetch(chrome.runtime.getURL(`fixtures/${f}`))).json()) as LabeledArc;
   const table = $("replay-out");
   table.innerHTML = "<tr><th>Day</th><th>Level</th><th>Score</th></tr>";
-  for (const r of replay(arc)) {
+  // Same function and zone as `node core/dist/cli.js score --mode pattern`, so the §8 merge check matches.
+  const { levels_by_day, scores_by_day } = scoreArc(arc, "pattern", "UTC");
+  levels_by_day.forEach((level, i) => {
     const tr = document.createElement("tr");
-    for (const v of [r.day, r.level, r.score.toFixed(1)]) { const td = document.createElement("td"); td.textContent = String(v); tr.append(td); }
+    for (const v of [i + 1, level, scores_by_day[i].toFixed(1)]) { const td = document.createElement("td"); td.textContent = String(v); tr.append(td); }
     table.append(tr);
-  }
+  });
 });
 
 void loadSettings();

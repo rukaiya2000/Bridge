@@ -6,7 +6,7 @@
     "types": ["chrome"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": true,
-    "paths": { "@bridge/core": ["./src/core-stub.ts"] }
+    "paths": { "@bridge/core": ["../core/src/index.ts"] }
   },
   "include": ["src"]
 }

@@ -15,6 +15,19 @@ describe("scoreProfile", () => {
     expect(first).toBeLessThanOrEqual(4);
   });
 
+  it("replaying a UTC fixture gives the same days in any local time zone", () => {
+    const utc = scoreArc(demo, "pattern", "UTC");
+    const saved = process.env.TZ;
+    try {
+      for (const tz of ["America/New_York", "Asia/Kolkata", "Pacific/Auckland"]) {
+        process.env.TZ = tz;
+        expect(scoreArc(demo, "pattern", "UTC")).toEqual(utc);
+      }
+    } finally {
+      process.env.TZ = saved;
+    }
+  });
+
   it("no single demo message is concerning on its own (the pattern claim)", () => {
     expect(scoreArc(demo, "single").levels_by_day).not.toContain("concerning");
   });

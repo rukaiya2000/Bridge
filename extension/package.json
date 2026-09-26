@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "build:real": "BRIDGE_CORE=real node build.mjs",
     "watch": "node build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "voice": "node scripts/generate-voice.mjs"
@@ -13,5 +12,8 @@
     "@types/chrome": "^0.0.270",
     "esbuild": "^0.23.0",
     "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "async-mutex": "^0.5.0"
   }
 }

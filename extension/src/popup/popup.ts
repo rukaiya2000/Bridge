@@ -1,7 +1,7 @@
 // Debug view: level, score and label counts per site. Shows labels only, never text.
 import type { Site, TurnLabels } from "../../../core/src/types";
 import * as store from "../storage";
-import { dayKey } from "../time";
+import { dayKey } from "../../../core/src/time";
 
 const $ = (id: string) => document.getElementById(id)!;
 
