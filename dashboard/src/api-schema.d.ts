@@ -86,7 +86,10 @@ export interface components {
         };
         /** HourlyTopicCount */
         HourlyTopicCount: {
-            /** Date */
+            /**
+             * Date
+             * Format: date
+             */
             date: string;
             /** Hour */
             hour: number;
@@ -130,7 +133,10 @@ export interface components {
         SyncPayload: {
             /** Child Id */
             child_id: string;
-            /** Week Start */
+            /**
+             * Week Start
+             * Format: date
+             */
             week_start: string;
             /** Sites */
             sites: components["schemas"]["SiteAggregate"][];

@@ -1,9 +1,10 @@
 """Sync payload: aggregates only (desc.md, Data handling). `extra="forbid"` rejects any field we
 didn't define, so message text can't slip in by accident."""
 
+from datetime import date, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Site = Literal["chatgpt", "claude", "characterai", "gemini"]
 Level = Literal["healthy", "watch", "concerning", "crisis"]
@@ -19,7 +20,7 @@ class Strict(BaseModel):
 
 
 class HourlyTopicCount(Strict):
-    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    date: date
     hour: int = Field(ge=0, le=23)
     topic: Topic
     count: int = Field(ge=0)
@@ -38,6 +39,15 @@ class SiteAggregate(Strict):
 
 class SyncPayload(Strict):
     child_id: str
-    week_start: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    week_start: date
     sites: list[SiteAggregate]
     hourly_topics: list[HourlyTopicCount]
+
+    @model_validator(mode="after")
+    def topics_inside_week(self) -> "SyncPayload":
+        # A sync replaces the whole week, so counts outside it would never be cleaned up.
+        end = self.week_start + timedelta(days=7)
+        for t in self.hourly_topics:
+            if not self.week_start <= t.date < end:
+                raise ValueError(f"hourly topic date {t.date} is outside the week starting {self.week_start}")
+        return self

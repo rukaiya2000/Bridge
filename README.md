@@ -65,18 +65,20 @@ uv run python -m eval.generate --conversations 160 --arcs 25
 uv run python -m eval.run --split tuning
 ```
 
-**API + dashboard**
+**API + dashboard** (needs `MONGODB_URI` in `.env`, from a free MongoDB Atlas cluster)
 ```bash
 uv run --group api uvicorn api.main:app --reload     # http://localhost:8000 (docs at /docs)
 npm run dev -w dashboard                             # http://localhost:5173, or the next free port
 ```
-The API keeps data in memory (MongoDB comes in Phase 2), so it starts empty after every restart. Load the demo week:
+Data is stored in MongoDB (`api/db.py`): `weekly_aggregates` (one document per child, week and site) and `hourly_topics` (a time-series collection). Both are deleted automatically 8 weeks after they're written. Load the demo week:
 ```bash
 curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/sample_week.json
 ```
 The dashboard shows the latest synced week and refreshes every 15 s. If the API is down it shows the sample week with a warning. Point it elsewhere with `VITE_API_URL`.
 
 After changing `api/models.py` or the routes, regenerate the dashboard's types: `npm run gen:api -w dashboard`.
+
+API tests start their own throwaway MongoDB 8 with `pymongo-inmemory` (no Docker, no Atlas; the first run downloads mongod once): `uv run --group api --group dev pytest api`.
 
 ## Team workflow
 

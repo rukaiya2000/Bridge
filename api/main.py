@@ -1,47 +1,65 @@
-"""Sync API skeleton (Phase 2). Run: uv run --group api uvicorn api.main:app --reload
+"""Sync API. Run: uv run --group api uvicorn api.main:app --reload
 
-Stores aggregates in memory for now. TODO(phase 2): MongoDB collections for profiles, hourly counts,
-parent settings, starter templates and tool ratings (PHASES.md).
-
+Stores aggregates in MongoDB (api/db.py). Needs MONGODB_URI (an Atlas connection string) in .env.
 Load the demo week: curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/sample_week.json
 """
 
-from collections import defaultdict
+from contextlib import asynccontextmanager
+from datetime import date
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo.database import Database
 
+from api import db as store
 from api.models import SyncPayload
 
-app = FastAPI(title="Bridge sync API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    client = store.connect()
+    app.state.db = store.database(client)
+    store.ensure_schema(app.state.db)
+    yield
+    client.close()
+
+
+app = FastAPI(title="Bridge sync API", lifespan=lifespan)
 # Local dev: the dashboard's Vite port varies (5173 is often taken), so allow any localhost port.
 app.add_middleware(
     CORSMiddleware, allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+", allow_methods=["*"], allow_headers=["*"]
 )
 
-_store: dict[str, dict[str, SyncPayload]] = defaultdict(dict)  # child_id → week_start → payload
+
+def get_db(request: Request) -> Database:
+    return request.app.state.db
+
+
+Db = Annotated[Database, Depends(get_db)]
 
 
 @app.get("/health")
-def health() -> dict:
+def health(db: Db) -> dict:
+    db.command("ping")
     return {"ok": True}
 
 
 @app.post("/sync")
-def sync(payload: SyncPayload) -> dict:
-    _store[payload.child_id][payload.week_start] = payload
+def sync(payload: SyncPayload, db: Db) -> dict:
+    store.save_week(db, payload)
     return {"stored": True}
 
 
 @app.get("/children/{child_id}/weeks")
-def weeks(child_id: str) -> list[str]:
+def weeks(child_id: str, db: Db) -> list[str]:
     """Week starts with data, newest first."""
-    return sorted(_store.get(child_id, {}), reverse=True)
+    return store.list_weeks(db, child_id)
 
 
 @app.get("/children/{child_id}/weeks/{week_start}")
-def week(child_id: str, week_start: str) -> SyncPayload:
-    try:
-        return _store[child_id][week_start]
-    except KeyError:
+def week(child_id: str, week_start: date, db: Db) -> SyncPayload:
+    found = store.load_week(db, child_id, week_start)
+    if found is None:
         raise HTTPException(404, "no data for that week")
+    return found

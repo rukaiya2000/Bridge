@@ -53,6 +53,7 @@ api = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 dev = [
+    { name = "pymongo-inmemory" },
     { name = "pytest" },
 ]
 
@@ -68,7 +69,10 @@ api = [
     { name = "pymongo" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-dev = [{ name = "pytest" }]
+dev = [
+    { name = "pymongo-inmemory", specifier = ">=0.5.0" },
+    { name = "pytest" },
+]
 
 [[package]]
 name = "certifi"
@@ -659,6 +663,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/2d/cb6aa46acaa0c3e615d535976458d0d535c481512dfcc2be58a3b4024417/pymongo-4.18.2-cp314-cp314t-win32.whl", hash = "sha256:a600edbe98e20e282d7331289429fff14d6426a062c8fc2234af6618a36d6ac3", size = 819030, upload-time = "2026-09-24T16:59:37.235Z" },
     { url = "https://files.pythonhosted.org/packages/9e/ef/3ba4a20ebe5548b7749d472b00c7faf5e7e9824b6565e51dd76add046992/pymongo-4.18.2-cp314-cp314t-win_amd64.whl", hash = "sha256:1501f2dfd34cd435a2cd99e155d14fa53459c5f3b18ce86b0ff537d654ead6ea", size = 827700, upload-time = "2026-09-24T16:59:38.835Z" },
     { url = "https://files.pythonhosted.org/packages/1d/c7/d0340e5fe18e7351885924f9f20895c0bb23af5282052f97f35df6f4724f/pymongo-4.18.2-cp314-cp314t-win_arm64.whl", hash = "sha256:7beca033207a1ceb35f6f030d9d95bde7df09f1088312c932a64c29a6f0d7b88", size = 818008, upload-time = "2026-09-24T16:59:40.56Z" },
+]
+
+[[package]]
+name = "pymongo-inmemory"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pymongo" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/a1/ab73c6440f445c11235101cd2da522054a4f35d41565f656890c5f215bb6/pymongo_inmemory-0.5.0.tar.gz", hash = "sha256:2af2a6bab1cda9a27f524737ce6d3c9ff8cb9e52c224537e5742d610c4aa677e", size = 17597, upload-time = "2025-03-13T16:35:57.208Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/d1/ecad3ecb9aebfe6790d98d611a7a2d65550a74503113aad4bb833a73498a/pymongo_inmemory-0.5.0-py3-none-any.whl", hash = "sha256:ebad4ccc9d9bed859ad25932f039aadb476f29c6945df57fdba0f9171f6626a1", size = 16902, upload-time = "2025-03-13T16:35:55.822Z" },
 ]
 
 [[package]]
