@@ -1,0 +1,9 @@
+{
+  "name": "bridge",
+  "private": true,
+  "workspaces": ["core", "extension"],
+  "scripts": {
+    "build": "npm run build -w core && npm run build -w extension",
+    "test": "npm test -w core"
+  }
+}
