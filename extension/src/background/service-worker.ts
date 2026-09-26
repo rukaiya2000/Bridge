@@ -82,9 +82,8 @@ async function onTurn(turn: Turn, tabId?: number) {
 async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefined, crisisShown: boolean) {
   // Label outside the lock: the Gemini call can take seconds and must not stall heartbeats.
   const settings = await store.get("settings");
-  // Personal details are replaced before the text leaves the device for labeling (Gemini or the
-  // OpenAI-compatible provider). The on-device crisis/abuse rules inside labelTurn still work:
-  // those phrases are not personal details.
+  // Personal details are replaced before the text leaves the device for labeling (UF Navigator).
+  // The on-device crisis/abuse rules inside labelTurn still work: those phrases are not personal details.
   const clean = (t: Turn | null) => t && { ...t, text: redactPersonal(t.text) };
   const labels = await core.labelTurn(clean(user)!, clean(bot), store.labelOptions(settings));
   // Labels only, never the text (open the service worker's DevTools from chrome://extensions to see these).

@@ -1,4 +1,4 @@
-"""Paths, model names and constants for the eval. Loads GEMINI_API_KEY from the repo's .env."""
+"""Paths, model names and constants for the eval. Loads the API keys from the repo's .env."""
 
 import os
 from pathlib import Path
@@ -8,9 +8,11 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-LABELER_MODEL = "gemini-3.8-flash"   # must match core/src/config.ts
-GENERATOR_MODEL = "gemini-3-flash-preview"  # a different model on purpose; Pro models need a paid quota
+# UF Navigator (OpenAI-compatible) labels turns (via the core CLI) and generates the dataset.
+NAVIGATOR_API_KEY = os.environ.get("NAVIGATOR_API_KEY", "")
+NAVIGATOR_BASE_URL = "https://api.navigator.ai.ufl.edu/v1"  # must match DEFAULT_LLM_BASE_URL in core/src/config.ts
+LABELER_MODEL = "gemma-4-31b-it"   # must match DEFAULT_LLM_MODEL in core/src/config.ts
+GENERATOR_MODEL = "llama-3.3-70b-instruct"  # a different model family on purpose
 
 DATA = ROOT / "eval" / "data"
 RESULTS = ROOT / "eval" / "results"

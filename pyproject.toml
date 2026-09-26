@@ -5,7 +5,7 @@ description = "Bridge: detects unhealthy teen–AI chatbot relationship patterns
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "google-genai",
+    "openai>=3.19.2",
     "python-dotenv",
 ]
 

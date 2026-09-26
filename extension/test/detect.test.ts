@@ -13,6 +13,13 @@ describe("findInText", () => {
     ["my password for the school portal is Tiger!2024", ["password"]],
     ["i was born on 03/14/2011", ["birthday"]],
     ["my student id is 1048837", ["student_id"]],
+    ["my ssn is 536221234", ["ssn"]],
+    ["cvv 123", ["card"]],
+    ["it expires 12/27", ["card"]],
+    ["routing 021000021 account 123456789012", ["bank"]],
+    ["my passport number is X12345678", ["id_document"]],
+    ["drivers license D123-456-78-901", ["id_document"]],
+    ["our zip code is 33101", ["address"]],
   ])("finds personal info: %s", async (text, expected) => {
     expect(await findInText(text)).toEqual(expect.arrayContaining(expected));
   });
@@ -26,6 +33,9 @@ describe("findInText", () => {
     "the password lesson in class was boring",
     "I have 12 friends on my street",
     "we read 20 pages of the road not taken",
+    "my license is expired",
+    "I got 1450 on the SAT and my account is new",
+    "social studies test is on 12/27",
   ])("stays quiet on normal chat: %s", async (text) => {
     expect(await findInText(text)).toEqual([]);
   });
@@ -56,6 +66,19 @@ describe("redactPersonal", () => {
     for (const secret of ["305-555-0142", "1200 SW 8th", "Tiger!2024"]) expect(out).not.toContain(secret);
     expect(out).toContain("I feel so alone");
     expect(out).toContain("I want to die");
+  });
+
+  it("removes the whole card, SSN, bank and address details", async () => {
+    const out = await redactPersonal(
+      "card 4111 1111 1111 1111 exp 12/27 cvv 123, ssn 536221234, routing 021000021, I live at 123 Main St Apt 4B, Miami FL 33101",
+    );
+    for (const secret of ["4111", "12/27", "123,", "536221234", "021000021", "Main", "4B", "Miami", "33101"]) {
+      expect(out).not.toContain(secret);
+    }
+  });
+
+  it("stops at the street when no city, state and ZIP follow", async () => {
+    expect(await redactPersonal("we moved to 45 Oak St and then we went out")).toBe("we moved to ADDRESS and then we went out");
   });
 
   it("leaves ordinary messages unchanged", async () => {

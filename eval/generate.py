@@ -1,4 +1,4 @@
-"""Generates the synthetic dataset with Gemini (PHASE1.md §6.3). Skeleton: prompts need tuning.
+"""Generates the synthetic dataset with UF Navigator (PHASE1.md §6.3). Skeleton: prompts need tuning.
 
     uv run python -m eval.generate --conversations 160 --arcs 25
 
@@ -10,8 +10,7 @@ import json
 import random
 from collections import Counter
 
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 from eval import config
 from eval.io import read_jsonl, write_jsonl
@@ -34,19 +33,19 @@ Use 1 to 2 sessions per day with 2 to 4 turns each; concerning arcs drift later 
 Return JSON: {{"days": [{{"day": 1, "sessions": [{{"hour": 21, "minute": 5, "turns": [{{"role": "user"|"bot", "text": "..."}}]}}]}}]}}"""
 
 
-def ask(client: genai.Client, prompt: str) -> dict:
-    res = client.models.generate_content(
+def ask(client: OpenAI, prompt: str) -> dict:
+    res = client.chat.completions.create(
         model=config.GENERATOR_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.9),
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=0.9,
     )
-    return json.loads(res.text)
+    return json.loads(res.choices[0].message.content)
 
 
-def make_client() -> genai.Client:
-    # The SDK retries overloads (503) and rate limits (429) with backoff; the free tier hits both.
-    retry = types.HttpRetryOptions(attempts=6, initial_delay=2, max_delay=60, http_status_codes=[429, 500, 503])
-    return genai.Client(api_key=config.GEMINI_API_KEY, http_options=types.HttpOptions(retry_options=retry))
+def make_client() -> OpenAI:
+    # Navigator is OpenAI-compatible. The SDK retries rate limits (429) and 5xx with backoff.
+    return OpenAI(api_key=config.NAVIGATOR_API_KEY, base_url=config.NAVIGATOR_BASE_URL, max_retries=6, timeout=180)
 
 
 def stamp(turns: list[dict], start: int) -> list[dict]:
@@ -103,8 +102,8 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--heldout", type=float, default=0.3, help="share of each label kept for the held-out split")
     args = ap.parse_args()
-    if not config.GEMINI_API_KEY:
-        raise SystemExit("Set GEMINI_API_KEY in .env")
+    if not config.NAVIGATOR_API_KEY:
+        raise SystemExit("Set NAVIGATOR_API_KEY in .env")
 
     rng = random.Random(args.seed)
     client = make_client()

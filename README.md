@@ -32,7 +32,7 @@ We share topics, not words. Sensitive topics are excluded from the parent view, 
 
 > Fill these in as each part lands.
 
-**Prerequisites:** Node 20+, Python 3.13 with [uv](https://docs.astral.sh/uv/), Chrome, a Gemini API key. Docker is needed from Phase 2.
+**Prerequisites:** Node 20+, Python 3.13 with [uv](https://docs.astral.sh/uv/), Chrome, a UF Navigator API key. Docker is needed from Phase 2.
 
 Copy `.env.example` to `.env` and fill in your keys. Then, once, from the repo root:
 
@@ -49,7 +49,7 @@ npm run build -w core && npm test -w core
 ```bash
 npm run build -w extension
 ```
-Then in Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/dist`. Paste your Gemini key on the extension's options page. Without a key the extension runs the on-device rules only (crisis and abuse phrases from `core/src/lexicon.ts`); with a key, Gemini adds the other labels.
+Then in Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/dist`. Paste your UF Navigator key on the extension's options page. Without a key the extension runs the on-device rules only (crisis and abuse phrases from `core/src/lexicon.ts`); with a key, Navigator adds the other labels. The core CLI and the eval (labeling and dataset generation) use `NAVIGATOR_API_KEY` from `.env`.
 
 **Spoken nudges** (feature 8, needs `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` in `.env`)
 ```bash

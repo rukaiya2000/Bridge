@@ -21,7 +21,8 @@ async function readLines(): Promise<string[]> {
 async function label(lines: string[]) {
   const rulesOnly = args.includes("--rules-only");
   const concurrency = Number(flag("--concurrency") ?? 4);
-  const geminiKey = rulesOnly ? undefined : process.env.GEMINI_API_KEY;
+  // Labels with UF Navigator (OpenAI-compatible, config.ts). No key → rules only.
+  const llmKey = rulesOnly ? undefined : process.env.NAVIGATOR_API_KEY;
   const out: string[] = new Array(lines.length);
   let next = 0;
   async function worker() {
@@ -29,7 +30,7 @@ async function label(lines: string[]) {
       const i = next++;
       try {
         const { key, user, bot } = JSON.parse(lines[i]);
-        const labels = await core.labelTurn(user, bot ?? null, { geminiKey });
+        const labels = await core.labelTurn(user, bot ?? null, { provider: "openai", llmKey });
         out[i] = JSON.stringify({ key, labels });
       } catch (e) {
         process.stderr.write(`line ${i + 1}: ${(e as Error).message}\n`);

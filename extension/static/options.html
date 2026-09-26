@@ -17,23 +17,13 @@
   <h1>Bridge</h1>
   <section>
     <h2>Settings</h2>
-    <label for="provider">Labeling model provider (crisis and abuse rules always run on-device)</label>
-    <select id="provider">
-      <option value="openai">OpenAI-compatible API (UF Navigator, OpenRouter)</option>
-      <option value="gemini">Gemini API</option>
-    </select>
-    <label for="preset">Endpoint</label>
-    <select id="preset"></select>
-    <label for="llm-url">Base URL</label>
-    <input id="llm-url" type="text" />
-    <label for="llm-key">API key (local dev only)</label>
+    <p>Messages are labeled by UF Navigator. Crisis and abuse rules always run on-device.</p>
+    <label for="llm-key">UF Navigator API key (local dev only)</label>
     <input id="llm-key" type="password" autocomplete="off" />
-    <label for="llm-model">Model</label>
+    <label for="llm-model">Navigator model</label>
     <input id="llm-model" type="text" />
-    <label for="key">Gemini API key (local dev only)</label>
-    <input id="key" type="password" autocomplete="off" />
-    <label for="model">Gemini model</label>
-    <input id="model" type="text" />
+    <label for="llm-url">Navigator base URL</label>
+    <input id="llm-url" type="text" />
     <label><input id="nudges" type="checkbox" /> Nudges on</label>
     <label><input id="spoken" type="checkbox" /> Speak nudges in voice mode</label>
     <label><input id="strict" type="checkbox" /> Strict privacy: personal info can't be sent at all (no "send anyway")</label>

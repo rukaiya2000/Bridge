@@ -16,7 +16,7 @@ def _check_cli() -> None:
 
 def _run(args: list[str], lines: list[str]) -> list[dict]:
     _check_cli()
-    env = {**os.environ, "GEMINI_API_KEY": config.GEMINI_API_KEY, "TZ": "UTC"}
+    env = {**os.environ, "NAVIGATOR_API_KEY": config.NAVIGATOR_API_KEY, "TZ": "UTC"}
     out = subprocess.run(
         ["node", str(config.CORE_CLI), *args],
         input="".join(line + "\n" for line in lines),
