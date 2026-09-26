@@ -4,12 +4,14 @@ import { LEVELS, type Level, type Site, type Turn, type TurnLabels } from "../..
 import { dayKey, isLateNight } from "../../../core/src/time";
 import type { ToContent, ToOffscreen, ToWorker } from "../messages";
 import * as store from "../storage";
+import { buildPayload, pruneDays } from "../sync/aggregate";
 import NUDGES from "../ui/nudges.json";
 
 const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
 const LATE_NIGHT_MIN_MS = 60 * 60_000;
 const NUDGES_PER_DAY = 3;
+const SYNC_DEBOUNCE_MS = 5_000;
 
 // Text lives only here, in memory, until the turn is labeled.
 const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boolean; timer: ReturnType<typeof setTimeout> }>();
@@ -20,9 +22,13 @@ const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boole
 const storageLock = new Mutex();
 const locked = <T>(fn: () => Promise<T>) => storageLock.runExclusive(fn);
 
-chrome.runtime.onInstalled.addListener(() => chrome.alarms.create("sessions", { periodInMinutes: 1 }));
+// Created on every worker start, not only onInstalled: alarms added in an update don't exist otherwise.
+for (const name of ["sessions", "sync"]) {
+  void chrome.alarms.get(name).then((a) => a ?? chrome.alarms.create(name, { periodInMinutes: 1 }));
+}
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "sessions") void locked(() => closeIdleSessions(Date.now()));
+  if (a.name === "sync") void syncNow();
 });
 
 chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
@@ -30,6 +36,7 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   if (msg.type === "turn") void onTurn(msg.turn, tabId);
   if (msg.type === "heartbeat") void locked(() => onHeartbeat(msg.site, msg.ts, msg.interacting, tabId));
   if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
+  if (msg.type === "sync-now") void syncNow();
   return false;
 });
 
@@ -88,6 +95,16 @@ async function recordTurn(user: Turn, labels: TurnLabels, tabId: number | undefi
   debug.recentLabels = [{ ts: user.ts, site, labels }, ...debug.recentLabels].slice(0, 20);
   await store.set("debug", debug);
 
+  // Hourly topic counts for the parent dashboard. A turn with abuse-at-home signals adds no topics:
+  // its topics are part of an excluded disclosure (desc.md, privacy rule 1).
+  if (!labels.abuseAtHome && labels.topics.length) {
+    const hourly = pruneDays(await store.get("hourly"), user.ts);
+    const hour = ((hourly[dayKey(user.ts)] ??= {})[new Date(user.ts).getHours()] ??= {});
+    for (const t of labels.topics) hour[t] = (hour[t] ?? 0) + 1;
+    await store.set("hourly", hourly);
+  }
+  scheduleSync();
+
   if (LEVELS.indexOf(result.level) > LEVELS.indexOf(previous) && (result.level === "watch" || result.level === "concerning")) {
     await maybeNudge(site, tabId, result.level);
   }
@@ -128,6 +145,7 @@ async function closeIdleSessions(now: number) {
   await store.set("sessions", sessions);
   await store.set("profiles", profiles);
   await store.set("state", state);
+  scheduleSync();
 }
 
 // ---- nudges and crisis ----
@@ -146,6 +164,9 @@ async function maybeNudge(site: Site, tabId: number | undefined, level: Level) {
   nudges.countToday += 1;
   if (sessionStart !== undefined) nudges.nudgedSessionStarts.push(sessionStart);
   await store.set("nudges", nudges);
+  const log = pruneDays(await store.get("nudgeLog"), Date.now());
+  (log[today] ??= {})[site] = (log[today]?.[site] ?? 0) + 1;
+  await store.set("nudgeLog", log);
   send(tabId, { type: "show-nudge", variant });
   await speakIfVoice(site, `audio/nudge-${variant}.mp3`);
 }
@@ -187,4 +208,62 @@ async function ensureOffscreen() {
     reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
     justification: "Speak Bridge nudges and crisis resources while the teen is in a chatbot's voice mode.",
   });
+}
+
+// ---- sync to the parent dashboard (api/main.py POST /sync) ----
+
+let syncTimer: ReturnType<typeof setTimeout> | undefined;
+let syncing: Promise<void> | undefined;
+
+// Coalesces bursts of turns into one sync a few seconds later. The 1-minute alarm is the backstop.
+function scheduleSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => void syncNow(), SYNC_DEBOUNCE_MS);
+}
+
+// Sends the current week. Each sync replaces the whole week on the server, so repeats are safe.
+function syncNow(): Promise<void> {
+  syncing ??= doSync().finally(() => (syncing = undefined));
+  return syncing;
+}
+
+async function doSync() {
+  const now = Date.now();
+  let status: NonNullable<store.Store["syncStatus"]>;
+  try {
+    status = await trySync(now);
+  } catch (e) {
+    status = { at: now, ok: false, message: `sync error: ${String(e)}` };
+  }
+  await locked(() => store.set("syncStatus", status));
+}
+
+async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus"]>> {
+  const { settings, payload } = await locked(async () => {
+    const [settings, profiles, hourly, voice, nudgeLog] = await Promise.all([
+      store.get("settings"), store.get("profiles"), store.get("hourly"), store.get("voice"), store.get("nudgeLog"),
+    ]);
+    const payload = buildPayload({
+      childId: settings.childId, now, profiles, hourly, voiceMinutes: voice.minutesByDay, nudges: nudgeLog,
+    });
+    return { settings, payload };
+  });
+  let status: NonNullable<store.Store["syncStatus"]>;
+  if (!payload.sites.length) {
+    status = { at: now, ok: true, message: "nothing to sync yet this week" };
+  } else {
+    try {
+      const res = await fetch(`${settings.apiUrl.replace(/\/+$/, "")}/sync`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      status = res.ok
+        ? { at: now, ok: true, message: `synced week of ${payload.week_start} (${payload.sites.length} sites)` }
+        : { at: now, ok: false, message: `API ${res.status}: ${(await res.text()).slice(0, 200)}` };
+    } catch (e) {
+      status = { at: now, ok: false, message: `API unreachable at ${settings.apiUrl} (${String(e)})` };
+    }
+  }
+  return status;
 }

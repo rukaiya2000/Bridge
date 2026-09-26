@@ -74,6 +74,8 @@ Data is stored in MongoDB (`api/db.py`): `weekly_aggregates` (one document per c
 ```bash
 for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'content-type: application/json' --data @api/fixtures/$f.json; done
 ```
+The extension syncs the current week to the API by itself: every minute and a few seconds after each message (`extension/src/sync/aggregate.ts` builds the payload; excluded topics are dropped and crisis is masked when abuse-at-home signals are in the same week). It posts as child `demo` to `http://localhost:8000`; change both on the extension's Options page, which also has a Sync now button. The popup shows the last sync result.
+
 The dashboard shows the latest synced week (pick older ones in the week menu) and refreshes every 15 s. Point it elsewhere with `VITE_API_URL`.
 
 After changing `api/models.py` or the routes, regenerate the dashboard's types: `npm run gen:api -w dashboard`.

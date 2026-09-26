@@ -11,9 +11,12 @@ function flags(l: TurnLabels): string {
 }
 
 async function render() {
-  const [profiles, state, debug, voice] = await Promise.all([
-    store.get("profiles"), store.get("state"), store.get("debug"), store.get("voice"),
+  const [profiles, state, debug, voice, sync] = await Promise.all([
+    store.get("profiles"), store.get("state"), store.get("debug"), store.get("voice"), store.get("syncStatus"),
   ]);
+  $("sync").textContent = sync
+    ? `Dashboard sync ${sync.ok ? "OK" : "failed"} at ${new Date(sync.at).toLocaleTimeString()}: ${sync.message}`
+    : "Dashboard sync: not yet";
   const today = dayKey(Date.now());
   const sites = $("sites");
   sites.replaceChildren();

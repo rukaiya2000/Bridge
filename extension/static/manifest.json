@@ -19,7 +19,7 @@
     }
   ],
   "permissions": ["storage", "alarms", "offscreen"],
-  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
+  "host_permissions": ["https://generativelanguage.googleapis.com/*", "http://localhost/*", "http://127.0.0.1/*"],
   "action": { "default_popup": "popup.html", "default_title": "Bridge" },
   "options_page": "options.html"
 }

@@ -1,6 +1,7 @@
 import { core } from "@bridge/core";
 import { scoreArc, type LabeledArc } from "../../../core/src/arc";
 import type { Turn } from "../../../core/src/types";
+import type { ToWorker } from "../messages";
 import * as store from "../storage";
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -12,6 +13,8 @@ async function loadSettings() {
   $<HTMLInputElement>("model").value = s.model;
   $<HTMLInputElement>("nudges").checked = s.nudgesEnabled;
   $<HTMLInputElement>("spoken").checked = s.spokenNudges;
+  $<HTMLInputElement>("api").value = s.apiUrl;
+  $<HTMLInputElement>("child").value = s.childId;
 }
 
 $("save").addEventListener("click", async () => {
@@ -20,6 +23,8 @@ $("save").addEventListener("click", async () => {
     model: $<HTMLInputElement>("model").value.trim() || "gemini-2.5-flash",
     nudgesEnabled: $<HTMLInputElement>("nudges").checked,
     spokenNudges: $<HTMLInputElement>("spoken").checked,
+    apiUrl: $<HTMLInputElement>("api").value.trim() || store.DEFAULTS.settings.apiUrl,
+    childId: $<HTMLInputElement>("child").value.trim() || store.DEFAULTS.settings.childId,
   });
   $("saved").textContent = "Saved";
   setTimeout(() => ($("saved").textContent = ""), 1500);
@@ -40,6 +45,18 @@ $("test").addEventListener("click", async () => {
   }
 });
 
+async function showSyncStatus() {
+  const st = await store.get("syncStatus");
+  $("sync-out").textContent = st ? `${st.ok ? "OK" : "Failed"}, ${new Date(st.at).toLocaleTimeString()}: ${st.message}` : "not synced yet";
+}
+
+$("sync").addEventListener("click", () => {
+  $("sync-out").textContent = "…";
+  const msg: ToWorker = { type: "sync-now" };
+  void chrome.runtime.sendMessage(msg).catch(() => {});
+});
+chrome.storage.onChanged.addListener((changes) => { if (changes.syncStatus) void showSyncStatus(); });
+void showSyncStatus();
 
 async function loadArcs() {
   const select = $<HTMLSelectElement>("arc");

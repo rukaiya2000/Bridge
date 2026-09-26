@@ -112,7 +112,7 @@ Git: Person1 works on `p1/extension`, Person2 on `p2/core-eval`. Only `core/src/
 
 Everything still runs on a laptop: `docker compose up` starts MongoDB, the API and the dashboard.
 
-- [ ] Aggregator in the extension: applies topic exclusions and abuse masking **before** sync; sends only the synced-data list from `desc.md`
+- [x] Aggregator in the extension: applies topic exclusions and abuse masking **before** sync; sends only the synced-data list from `desc.md`
 - [ ] FastAPI `api/`: `POST /sync` for aggregates, and `GET` endpoints for the dashboard; MongoDB collections for profiles, hourly counts, parent settings, starter templates and tool ratings
 - [ ] Dashboard `dashboard/` (React): weekly insight card, time-of-day chart, trend versus last week (Mongo aggregation), conversation starter from vetted templates
 - [ ] Tool report card (hand-curated ratings seeded into Mongo) and time and spend view with paid-tier flag
