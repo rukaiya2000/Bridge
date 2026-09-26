@@ -17,9 +17,11 @@ async function loadSettings() {
 $("save").addEventListener("click", async () => {
   await store.set("settings", {
     geminiKey: $<HTMLInputElement>("key").value.trim(),
-    model: $<HTMLInputElement>("model").value.trim() || "gemini-2.5-flash",
+    model: $<HTMLInputElement>("model").value.trim() || "gemini-3.8-flash",
     nudgesEnabled: $<HTMLInputElement>("nudges").checked,
     spokenNudges: $<HTMLInputElement>("spoken").checked,
+    apiUrl: (await store.get("settings")).apiUrl,
+    childId: (await store.get("settings")).childId,
   });
   $("saved").textContent = "Saved";
   setTimeout(() => ($("saved").textContent = ""), 1500);

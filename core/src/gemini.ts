@@ -1,5 +1,6 @@
 import type { LabelOptions, Turn, TurnLabels } from "./types.js";
 import { EXCLUDED_TOPICS, TOPICS } from "./types.js";
+import pRetry, { AbortError } from "p-retry";
 import { DEFAULT_MODEL, DEFAULT_TIMEOUT_MS, MAX_CHARS_PER_TURN } from "./config.js";
 
 export type GeminiLabels = Omit<TurnLabels, "source">;
@@ -21,6 +22,11 @@ Rules: a word like "lonely" inside schoolwork (a poem, an essay topic) is NOT lo
 const clip = (s: string) => s.slice(0, MAX_CHARS_PER_TURN);
 
 // Returns null on any failure so the caller falls back to rules. Never logs text.
+// Gemini often answers 503 ("high demand") or 429 for a moment; those are retried with backoff.
+const RETRIES = 2;
+const RETRYABLE = (status: number) => status === 429 || status >= 500;
+
+// Returns null on any failure so the caller falls back to rules. Never logs text.
 export async function geminiLabel(
   user: Turn,
   bot: Turn | null,
@@ -28,37 +34,38 @@ export async function geminiLabel(
 ): Promise<GeminiLabels | null> {
   const model = opts.model ?? DEFAULT_MODEL;
   const doFetch = opts.fetchImpl ?? fetch;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const started = Date.now();
+  const body = JSON.stringify({
+    contents: [{
+      role: "user",
+      parts: [{ text: `${PROMPT}\nTEEN: ${clip(user.text)}\nBOT: ${bot ? clip(bot.text) : "(no reply)"}` }],
+    }],
+    // Low thinking keeps a label at ~2 s instead of up to ~20 s; the task is a short classification.
+    generationConfig: { responseMimeType: "application/json", temperature: 0, thinkingConfig: { thinkingLevel: "low" } },
+  });
   try {
-    const res = await doFetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
+    const res = await pRetry(async () => {
+      const r = await doFetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
-        signal: ctrl.signal,
+        signal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
         headers: { "content-type": "application/json", "x-goog-api-key": opts.geminiKey },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{ text: `${PROMPT}\nTEEN: ${clip(user.text)}\nBOT: ${bot ? clip(bot.text) : "(no reply)"}` }],
-          }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0 },
-        }),
-      },
-    );
-    if (!res.ok) {
-      console.warn(`[bridge] gemini status=${res.status} ms=${Date.now() - started}`);
-      return null;
-    }
-    const body = await res.json();
-    const raw = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+        body,
+      });
+      if (r.ok) return r;
+      const err = new Error(`status=${r.status}`);
+      throw RETRYABLE(r.status) ? err : new AbortError(err);
+    }, {
+      retries: RETRIES,
+      minTimeout: 500,
+      onFailedAttempt: ({ error, retriesLeft }) =>
+        console.warn(`[bridge] gemini ${error.message} ms=${Date.now() - started} retries_left=${retriesLeft}`),
+    });
+    const json = await res.json();
+    const raw = json?.candidates?.[0]?.content?.parts?.[0]?.text;
     return validate(JSON.parse(raw));
   } catch {
     console.warn(`[bridge] gemini failed ms=${Date.now() - started}`);
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 

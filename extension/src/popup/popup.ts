@@ -1,5 +1,6 @@
 // Debug view: level, score and label counts per site. Shows labels only, never text.
 import type { Site, TurnLabels } from "../../../core/src/types";
+import type { ToWorker } from "../messages";
 import * as store from "../storage";
 import { dayKey } from "../../../core/src/time";
 
@@ -11,9 +12,12 @@ function flags(l: TurnLabels): string {
 }
 
 async function render() {
-  const [profiles, state, debug, voice] = await Promise.all([
-    store.get("profiles"), store.get("state"), store.get("debug"), store.get("voice"),
+  const [profiles, state, debug, voice, sync] = await Promise.all([
+    store.get("profiles"), store.get("state"), store.get("debug"), store.get("voice"), store.get("sync"),
   ]);
+  $("sync").textContent = sync.lastAt
+    ? `Last sync ${new Date(sync.lastAt).toLocaleTimeString()}: ${sync.ok ? "OK" : "failed"}, ${sync.message}`
+    : "Not synced yet";
   const today = dayKey(Date.now());
   const sites = $("sites");
   sites.replaceChildren();
@@ -48,4 +52,9 @@ async function render() {
 }
 
 $("reset").addEventListener("click", async () => { await store.resetData(); await render(); });
+$("sync-now").addEventListener("click", () => {
+  const msg: ToWorker = { type: "sync-now" };
+  chrome.runtime.sendMessage(msg).catch(() => {});
+  setTimeout(() => void render(), 1500);
+});
 void render();

@@ -5,7 +5,9 @@ export type ToWorker =
   | { type: "turn"; turn: Turn }
   | { type: "heartbeat"; site: Site; ts: number; interacting: boolean }
   // Feature 8: mic opened or closed on an AI site. Timing only, never audio.
-  | { type: "voice"; site: Site; active: boolean; ts: number };
+  | { type: "voice"; site: Site; active: boolean; ts: number }
+  // popup "Sync now" button
+  | { type: "sync-now" };
 
 // service worker → content script (chrome.tabs.sendMessage to the sender tab)
 export type ToContent =

@@ -1,7 +1,8 @@
 import { Mutex } from "async-mutex";
 import { core } from "@bridge/core";
 import { LEVELS, type Level, type Site, type Turn, type TurnLabels } from "../../../core/src/types";
-import { dayKey, isLateNight } from "../../../core/src/time";
+import { dayKey, isLateNight, shiftDay } from "../../../core/src/time";
+import { buildSyncPayload, hourKey } from "../../../core/src/aggregate";
 import type { ToContent, ToOffscreen, ToWorker } from "../messages";
 import * as store from "../storage";
 import NUDGES from "../ui/nudges.json";
@@ -10,6 +11,8 @@ const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
 const LATE_NIGHT_MIN_MS = 60 * 60_000;
 const NUDGES_PER_DAY = 3;
+const SYNC_DEBOUNCE_MS = 3000;
+const HOURLY_KEEP_DAYS = 14;
 
 // Text lives only here, in memory, until the turn is labeled.
 const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boolean; timer: ReturnType<typeof setTimeout> }>();
@@ -20,9 +23,15 @@ const pending = new Map<string, { user: Turn; tabId?: number; crisisShown: boole
 const storageLock = new Mutex();
 const locked = <T>(fn: () => Promise<T>) => storageLock.runExclusive(fn);
 
-chrome.runtime.onInstalled.addListener(() => chrome.alarms.create("sessions", { periodInMinutes: 1 }));
+const createAlarms = () => {
+  chrome.alarms.create("sessions", { periodInMinutes: 1 });
+  chrome.alarms.create("sync", { periodInMinutes: 5 });
+};
+chrome.runtime.onInstalled.addListener(createAlarms);
+chrome.runtime.onStartup.addListener(createAlarms);
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === "sessions") void locked(() => closeIdleSessions(Date.now()));
+  if (a.name === "sync") void syncNow();
 });
 
 chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
@@ -30,6 +39,7 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   if (msg.type === "turn") void onTurn(msg.turn, tabId);
   if (msg.type === "heartbeat") void locked(() => onHeartbeat(msg.site, msg.ts, msg.interacting, tabId));
   if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
+  if (msg.type === "sync-now") void syncNow();
   return false;
 });
 
@@ -44,6 +54,8 @@ function send(tabId: number | undefined, msg: ToContent) {
 const pairKey = (turn: Turn, tabId?: number) => (tabId !== undefined ? `tab:${tabId}` : `conv:${turn.conversationId}`);
 
 async function onTurn(turn: Turn, tabId?: number) {
+  // Shape only, never the text.
+  console.info(`[Bridge] turn received: ${turn.site} ${turn.role} ${turn.text.length} chars (${turn.id})`);
   const key = pairKey(turn, tabId);
   if (turn.role === "user") {
     const quick = core.rulesLabel(turn, null);
@@ -70,7 +82,10 @@ async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefin
   const settings = await store.get("settings");
   const labels = await core.labelTurn(user, bot, { geminiKey: settings.geminiKey || undefined, model: settings.model });
   if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
+  const flags = (["dependency", "isolation", "botHook", "crisis", "abuseAtHome"] as const).filter((k) => labels[k]);
+  console.info(`[Bridge] labeled (${labels.source}): topics=[${labels.topics}] flags=[${flags}] excluded=${labels.excludedTopics.length}`);
   await locked(() => recordTurn(user, labels, tabId));
+  scheduleSync();
 }
 
 async function recordTurn(user: Turn, labels: TurnLabels, tabId: number | undefined) {
@@ -83,6 +98,15 @@ async function recordTurn(user: Turn, labels: TurnLabels, tabId: number | undefi
   state[site] = { ...result, updatedAt: Date.now() };
   await store.set("profiles", profiles);
   await store.set("state", state);
+  console.info(`[Bridge] ${site} level=${result.level} score=${result.score}`);
+
+  // Parent-visible topics per local hour, for the dashboard's time-of-day chart.
+  const hourly = await store.get("hourly");
+  const k = hourKey(dayKey(user.ts), new Date(user.ts).getHours());
+  for (const t of labels.topics) hourly[k] = { ...hourly[k], [t]: (hourly[k]?.[t] ?? 0) + 1 };
+  const oldest = shiftDay(dayKey(Date.now()), HOURLY_KEEP_DAYS);
+  for (const key of Object.keys(hourly)) if (key.split("|")[0] < oldest) delete hourly[key];
+  await store.set("hourly", hourly);
 
   const debug = await store.get("debug");
   debug.recentLabels = [{ ts: user.ts, site, labels }, ...debug.recentLabels].slice(0, 20);
@@ -128,6 +152,7 @@ async function closeIdleSessions(now: number) {
   await store.set("sessions", sessions);
   await store.set("profiles", profiles);
   await store.set("state", state);
+  scheduleSync();
 }
 
 // ---- nudges and crisis ----
@@ -144,6 +169,7 @@ async function maybeNudge(site: Site, tabId: number | undefined, level: Level) {
 
   const variant = nudges.countToday % NUDGES.length;
   nudges.countToday += 1;
+  nudges.byDay[today] = { ...nudges.byDay[today], [site]: (nudges.byDay[today]?.[site] ?? 0) + 1 };
   if (sessionStart !== undefined) nudges.nudgedSessionStarts.push(sessionStart);
   await store.set("nudges", nudges);
   send(tabId, { type: "show-nudge", variant });
@@ -187,4 +213,41 @@ async function ensureOffscreen() {
     reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
     justification: "Speak Bridge nudges and crisis resources while the teen is in a chatbot's voice mode.",
   });
+}
+
+// ---- sync to the parent API ----
+
+// Sends this week's summary (counts and levels only, built and privacy-masked by core's
+// buildSyncPayload) to the API. The API replaces the whole week, so re-sending is safe.
+let syncTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleSync() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => void syncNow(), SYNC_DEBOUNCE_MS);
+}
+
+async function syncNow() {
+  const { payload, apiUrl } = await locked(async () => {
+    const [settings, profiles, hourly, voice, nudges] = await Promise.all([
+      store.get("settings"), store.get("profiles"), store.get("hourly"), store.get("voice"), store.get("nudges"),
+    ]);
+    return {
+      apiUrl: settings.apiUrl,
+      payload: buildSyncPayload({
+        childId: settings.childId, now: Date.now(), profiles, hourly,
+        voiceMinutesByDay: voice.minutesByDay, nudgesByDay: nudges.byDay,
+      }),
+    };
+  });
+  if (!payload.sites.length) return console.info("[Bridge] sync skipped: no activity this week");
+  let status: { ok: boolean; message: string };
+  try {
+    const res = await fetch(`${apiUrl}/sync`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+    });
+    status = { ok: res.ok, message: res.ok ? `synced week ${payload.week_start}` : `HTTP ${res.status}: ${(await res.text()).slice(0, 200)}` };
+  } catch (e) {
+    status = { ok: false, message: `API unreachable at ${apiUrl}: ${(e as Error).message}` };
+  }
+  console.info(`[Bridge] sync ${status.ok ? "OK" : "FAILED"}: ${status.message}`, payload);
+  await locked(() => store.set("sync", { lastAt: Date.now(), ...status }));
 }
