@@ -54,6 +54,14 @@ def test_hidden_privacy_flags_round_trip_and_default_to_false(client):
     assert [f["hidden"] for f in client.get(WEEK).json()["privacy_flags"]] == [True, False]
 
 
+def test_safety_gate_blocks_are_stored_without_their_category(client):
+    blocked = {"date": "2026-09-02", "hour": 23, "site": "gemini", "what": "message", "findings": ["unsafe"], "sent": False}
+    assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [blocked]}).status_code == 200
+    assert client.get(WEEK).json()["privacy_flags"] == [{**blocked, "hidden": False}]
+    # The gate's category (self_harm, abuse_at_home, ...) is never accepted, so abuse can't reach a parent.
+    assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [{**blocked, "findings": ["abuse_at_home"]}]}).status_code == 422
+
+
 def test_data_survives_restart(client):
     client.post("/sync", json=PAYLOAD)
     with TestClient(app, headers=client.headers) as restarted:

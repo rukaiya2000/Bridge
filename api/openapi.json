@@ -598,11 +598,12 @@
                 "password",
                 "birthday",
                 "student_id",
-                "id_document"
+                "id_document",
+                "unsafe"
               ]
             },
             "type": "array",
-            "maxItems": 10,
+            "maxItems": 11,
             "minItems": 1,
             "title": "Findings"
           },

@@ -13,6 +13,8 @@ async function loadSettings() {
   $<HTMLInputElement>("nudges").checked = s.nudgesEnabled;
   $<HTMLInputElement>("spoken").checked = s.spokenNudges;
   $<HTMLInputElement>("strict").checked = s.privacyStrict;
+  $<HTMLInputElement>("safety").checked = s.safetyGate;
+  $<HTMLInputElement>("threshold").value = String(s.safetyThreshold);
   $<HTMLInputElement>("api").value = s.apiUrl;
   $<HTMLInputElement>("child").value = s.childId;
   $("device").textContent = await store.deviceId();
@@ -68,6 +70,8 @@ $("save").addEventListener("click", async () => {
     nudgesEnabled: $<HTMLInputElement>("nudges").checked,
     spokenNudges: $<HTMLInputElement>("spoken").checked,
     privacyStrict: $<HTMLInputElement>("strict").checked,
+    safetyGate: $<HTMLInputElement>("safety").checked,
+    safetyThreshold: clampThreshold($<HTMLInputElement>("threshold").valueAsNumber),
     apiUrl: $<HTMLInputElement>("api").value.trim() || store.DEFAULTS.settings.apiUrl,
     childId: $<HTMLInputElement>("child").value.trim() || store.DEFAULTS.settings.childId,
   });
@@ -131,3 +135,8 @@ $("replay").addEventListener("click", async () => {
 void loadSettings();
 void showAuth();
 void loadArcs();
+
+// An empty or out-of-range box falls back to the default rather than turning the gate off.
+function clampThreshold(v: number): number {
+  return Number.isFinite(v) && v > 0 && v <= 1 ? v : store.DEFAULTS.settings.safetyThreshold;
+}

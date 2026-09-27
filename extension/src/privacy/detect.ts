@@ -4,7 +4,9 @@ import { Redactor } from "@redactpii/node";
 import cardValidator from "card-validator";
 
 export type Finding =
-  | "phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document";
+  | "phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document"
+  // Blocked by the Jev safety gate (core/src/safety.ts). No category, so abuse is never revealed to a parent.
+  | "unsafe";
 
 export const FINDING_LABEL: Record<Finding, string> = {
   phone: "a phone number",
@@ -17,6 +19,7 @@ export const FINDING_LABEL: Record<Finding, string> = {
   birthday: "a date of birth",
   student_id: "a student ID",
   id_document: "what looks like an ID, school or medical document",
+  unsafe: "something unsafe to share with a chatbot",
 };
 
 // Phone, email, SSN and cards. NAME is off: it guesses names from greetings and flags too much chat.
@@ -116,6 +119,7 @@ export const HIDDEN_LABEL: Record<Finding, string> = {
   birthday: "[birthday removed]",
   student_id: "[student ID removed]",
   id_document: "[ID number removed]",
+  unsafe: "[message removed]", // never found inside text: the safety gate blocks the whole message
 };
 
 // The teen's message with each personal detail replaced by a readable placeholder, so the rest can

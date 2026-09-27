@@ -73,7 +73,7 @@ const FEELING_RULES =
   "Only the teen's own feelings count, not the bot's. Count it whether said plainly or indirectly; sarcasm and slang count by meaning. " +
   "A word used inside schoolwork (a poem, an essay topic) does not count.";
 
-const noul = (instructions: string, yes: string, no: string) =>
+export const noul = (instructions: string, yes: string, no: string) =>
   ({ type: "noul", instructions, criteria: { true: yes, false: no } });
 
 export const QUESTIONS: Record<string, ReturnType<typeof noul>> = {
@@ -99,26 +99,23 @@ export const clip = (s: string) => s.slice(0, MAX_CHARS_PER_TURN);
 export const RETRIES = 2;
 const RETRYABLE = (status: number) => status === 429 || status >= 500;
 
-// Returns null on any failure so the caller falls back to rules. Never logs text.
-export async function jevLabel(
-  user: Turn,
-  bot: Turn | null,
-  opts: LabelOptions & { jevKey: string },
-): Promise<LlmLabels | null> {
+// One Decisions API call: Jev answers every question about `state`. Returns the raw answers, or
+// null on any failure. Shared by labeling (jevLabel) and the send-time safety gate (safety.ts).
+// Never logs text: status and timing only.
+export async function decide(
+  state: Record<string, string>,
+  questions: Record<string, unknown>,
+  opts: Pick<LabelOptions, "timeoutMs" | "fetchImpl"> & { jevKey: string },
+): Promise<Record<string, unknown> | null> {
   const doFetch = opts.fetchImpl ?? fetch;
   const started = Date.now();
-  const body = JSON.stringify({
-    model: JEV_MODEL,
-    state: { teen_message: clip(user.text), bot_reply: bot ? clip(bot.text) : "(no reply)" },
-    questions: QUESTIONS,
-  });
   try {
     const res = await pRetry(async () => {
       const r = await doFetch(JEV_URL, {
         method: "POST",
         signal: AbortSignal.timeout(opts.timeoutMs ?? JEV_TIMEOUT_MS),
         headers: { "content-type": "application/json", authorization: `Bearer ${opts.jevKey}`, "x-title": "Bridge" },
-        body,
+        body: JSON.stringify({ model: JEV_MODEL, state, questions }),
       });
       if (r.ok) return r;
       const err = new Error(`status=${r.status}`);
@@ -129,12 +126,24 @@ export async function jevLabel(
       onFailedAttempt: ({ error, retriesLeft }) =>
         console.warn(`[bridge] jev ${error.message} ms=${Date.now() - started} retries_left=${retriesLeft}`),
     });
-    return fromAnswers((await res.json())?.answers);
+    const json = await res.json();
+    console.info(`[bridge] jev answered via ${json?.model} ms=${Date.now() - started}`);
+    return json?.answers && typeof json.answers === "object" ? json.answers : null;
   } catch (e) {
     // Status only: never the response body, which could quote the teen's text.
     console.warn(`[bridge] jev failed ${e instanceof Error && e.message.startsWith("status=") ? e.message : ""} ms=${Date.now() - started}`);
     return null;
   }
+}
+
+// Returns null on any failure so the caller falls back to rules. Never logs text.
+export async function jevLabel(
+  user: Turn,
+  bot: Turn | null,
+  opts: LabelOptions & { jevKey: string },
+): Promise<LlmLabels | null> {
+  const state = { teen_message: clip(user.text), bot_reply: bot ? clip(bot.text) : "(no reply)" };
+  return fromAnswers(await decide(state, QUESTIONS, opts));
 }
 
 // Each answer is { type: "noul", noul: <probability of true> }. Any missing answer → null (rules only).

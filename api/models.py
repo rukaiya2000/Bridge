@@ -29,9 +29,11 @@ class HourlyTopicCount(Strict):
     count: int = Field(ge=0, le=1000)  # one teen can't mention a topic 1000+ times in one hour
 
 
-# Kinds of personal info the extension's privacy guard catches (extension/src/privacy/detect.ts).
+# Kinds of personal info the extension's privacy guard catches (extension/src/privacy/detect.ts), plus
+# "unsafe": a message the Jev safety gate blocked. Never its category, so abuse can't reach a parent.
 Finding = Literal[
     "phone", "email", "ssn", "card", "bank", "address", "password", "birthday", "student_id", "id_document",
+    "unsafe",
 ]
 
 
