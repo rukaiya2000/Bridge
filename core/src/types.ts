@@ -41,7 +41,7 @@ export interface TurnLabels {
   crisis: boolean;        // self-harm / suicide / crisis language
   abuseAtHome: boolean;   // abuse or conflict at home
   excludedTopics: ExcludedTopic[];
-  source: "rules" | "rules+gemini" | "rules+llm";
+  source: "rules" | "rules+gemini" | "rules+llm"; // "rules+gemini": older data; Jev labels are "rules+llm"
 }
 
 export interface SessionEvent {
@@ -80,13 +80,8 @@ export interface ScoreResult {
 }
 
 export interface LabelOptions {
-  geminiKey?: string;     // omit → rules only (when provider is "gemini")
-  model?: string;         // Gemini model, default from core/src/config.ts
-  provider?: "gemini" | "openai"; // default "gemini"; "openai" = any OpenAI-compatible API
-  llmBaseUrl?: string;    // OpenAI-compatible base URL, default UF Navigator (config.ts)
-  llmKey?: string;        // omit → rules only (when provider is "openai")
-  llmModel?: string;      // default from config.ts
-  timeoutMs?: number;     // default 8000
+  jevKey?: string;        // OpenRouter key for Jev (config.ts); omit → rules only
+  timeoutMs?: number;     // default JEV_TIMEOUT_MS
   fetchImpl?: typeof fetch;
 }
 
@@ -94,7 +89,7 @@ export interface LabelOptions {
 export interface CoreApi {
   // Synchronous, on-device, no network. Must run in under 5 ms.
   rulesLabel(user: Turn, bot: Turn | null): TurnLabels;
-  // Rules + LLM (Gemini or an OpenAI-compatible API) merged. Falls back to rules only on missing key, timeout or bad JSON.
+  // Rules + Jev (OpenRouter) merged. Falls back to rules only on missing key, timeout or bad JSON.
   labelTurn(user: Turn, bot: Turn | null, opts?: LabelOptions): Promise<TurnLabels>;
   emptyProfile(site: Site): Profile;
   // Pure: returns a new Profile. Adds labels to the day of `ts`, drops days older than 7 days before `ts`.

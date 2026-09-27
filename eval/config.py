@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-# UF Navigator (OpenAI-compatible) labels turns (via the core CLI) and generates the dataset.
+# Jev on OpenRouter labels turns (via the core CLI). UF Navigator (OpenAI-compatible) generates the dataset.
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+LABELER_MODEL = "typesafe/jev-1.13"   # must match JEV_MODEL in core/src/config.ts
 NAVIGATOR_API_KEY = os.environ.get("NAVIGATOR_API_KEY", "")
-NAVIGATOR_BASE_URL = "https://api.navigator.ai.ufl.edu/v1"  # must match DEFAULT_LLM_BASE_URL in core/src/config.ts
-LABELER_MODEL = "gemma-4-31b-it"   # must match DEFAULT_LLM_MODEL in core/src/config.ts
+NAVIGATOR_BASE_URL = "https://api.navigator.ai.ufl.edu/v1"
 GENERATOR_MODEL = "llama-3.3-70b-instruct"  # a different model family on purpose
 
 DATA = ROOT / "eval" / "data"

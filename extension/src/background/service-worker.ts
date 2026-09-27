@@ -118,18 +118,17 @@ async function onTurn(turn: Turn, tabId?: number) {
 }
 
 async function processTurn(user: Turn, bot: Turn | null, tabId: number | undefined, crisisShown: boolean) {
-  // Label outside the lock: the Gemini call can take seconds and must not stall heartbeats.
-  const settings = await store.get("settings");
-  // Personal details are replaced before the text leaves the device for labeling (UF Navigator).
+  // Label outside the lock: the Jev call can take seconds and must not stall heartbeats.
+  // Personal details are replaced before the text leaves the device for labeling (Jev on OpenRouter).
   // The on-device crisis/abuse rules inside labelTurn still work: those phrases are not personal details.
   const clean = (t: Turn | null) => t && { ...t, text: redactPersonal(t.text) };
-  const labels = await core.labelTurn(clean(user)!, clean(bot), store.labelOptions(settings));
+  const labels = await core.labelTurn(clean(user)!, clean(bot), store.labelOptions());
   // Labels only, never the text (open the service worker's DevTools from chrome://extensions to see these).
   console.info(`[Bridge] labeled ${user.site} turn via ${labels.source}:`, labels);
   if (labels.source === "rules") {
-    console.warn(settings.llmKey
-      ? "[Bridge] Navigator failed for this turn, so only crisis/abuse rules ran (see the llm failed line above for the status)"
-      : "[Bridge] no UF Navigator key on the Options page, so only crisis/abuse rules ran: feelings and topics are not detected");
+    console.warn(store.JEV_KEY
+      ? "[Bridge] Jev failed for this turn, so only crisis/abuse rules ran (see the jev failed line above for the status)"
+      : "[Bridge] no OPENROUTER_API_KEY in .env when the extension was built, so only crisis/abuse rules ran: feelings and topics are not detected");
   }
   if (labels.crisis && !crisisShown) await showCrisis(user.site, tabId, labels.abuseAtHome);
   await locked(() => recordTurn(user, labels, tabId));

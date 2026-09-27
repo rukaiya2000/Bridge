@@ -1,13 +1,14 @@
 // Typed helpers over chrome.storage.local. No key ever holds message text.
 import type { LabelOptions, Profile, ScoreResult, Site, TurnLabels } from "../../core/src/types";
 import type { DayLog, HourlyTopics, PerDaySite, PrivacyEntry, VoiceEntry } from "./sync/aggregate";
-import { DEFAULT_LLM_BASE_URL, DEFAULT_LLM_MODEL } from "../../core/src/config";
+
+// OpenRouter key for Jev, copied from the repo's .env by build.mjs. It ships inside dist/, so any
+// build given to someone else gives them the key: fine for local and demo builds only.
+declare const __OPENROUTER_API_KEY__: string;
+export const JEV_KEY = typeof __OPENROUTER_API_KEY__ === "string" ? __OPENROUTER_API_KEY__ : "";
 
 export interface Settings {
-  // Turns are labeled by UF Navigator (OpenAI-compatible). Local crisis/abuse rules always run.
-  llmBaseUrl: string;
-  llmKey: string;
-  llmModel: string;
+  // Turns are labeled by Jev on OpenRouter (key from the build, see JEV_KEY). Local crisis/abuse rules always run.
   nudgesEnabled: boolean;
   spokenNudges: boolean; // feature 8
   apiUrl: string;        // sync API (api/main.py)
@@ -42,7 +43,7 @@ export interface Store {
 
 export const DEFAULTS: Store = {
   settings: {
-    llmBaseUrl: DEFAULT_LLM_BASE_URL, llmKey: "", llmModel: DEFAULT_LLM_MODEL, nudgesEnabled: true, spokenNudges: true,
+    nudgesEnabled: true, spokenNudges: true,
     apiUrl: "http://localhost:8000", childId: "demo", privacyStrict: false,
   },
   profiles: {},
@@ -60,24 +61,15 @@ export const DEFAULTS: Store = {
   syncStatus: null,
 };
 
-// Settings saved when Gemini and OpenRouter were options: drop their fields, and move an OpenRouter
-// endpoint (and its key) back to Navigator.
-const LEGACY_KEYS = ["provider", "geminiKey", "model", "openrouterKey", "openrouterModel"];
+// Settings saved by older versions (Gemini, OpenRouter chat, UF Navigator): drop their fields, keys included.
+const LEGACY_KEYS = ["provider", "geminiKey", "model", "openrouterKey", "openrouterModel", "llmBaseUrl", "llmKey", "llmModel"];
 function dropLegacy(s: Settings) {
   const r = s as unknown as Record<string, unknown>;
   for (const k of LEGACY_KEYS) delete r[k];
-  if (s.llmBaseUrl.includes("openrouter.ai")) {
-    Object.assign(s, { llmBaseUrl: DEFAULT_LLM_BASE_URL, llmModel: DEFAULT_LLM_MODEL, llmKey: "" });
-  }
 }
 
-// What core.labelTurn needs from the settings.
-export const labelOptions = (s: Settings): LabelOptions => ({
-  provider: "openai",
-  llmBaseUrl: s.llmBaseUrl,
-  llmKey: s.llmKey || undefined,
-  llmModel: s.llmModel,
-});
+// What core.labelTurn needs.
+export const labelOptions = (): LabelOptions => ({ jevKey: JEV_KEY || undefined });
 
 export async function get<K extends keyof Store>(key: K): Promise<Store[K]> {
   const got = (await chrome.storage.local.get(key))[key] as Store[K] | undefined;

@@ -4,12 +4,17 @@ import { cpSync, existsSync, mkdirSync, readdirSync } from "node:fs";
 
 const watch = process.argv.includes("--watch");
 
+// Jev's OpenRouter key comes from the repo's .env (Node's built-in loader) and is baked into the
+// bundle, so anyone with this dist/ can read it. Don't publish a build made with a real key.
+if (existsSync("../.env")) process.loadEnvFile("../.env");
+
 const common = {
   bundle: true,
   target: "chrome120",
   sourcemap: true,
   logLevel: "info",
   alias: { "@bridge/core": "../core/src/index.ts" },
+  define: { __OPENROUTER_API_KEY__: JSON.stringify(process.env.OPENROUTER_API_KEY ?? "") },
 };
 
 const entries = [

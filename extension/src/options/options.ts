@@ -9,9 +9,7 @@ const FIXTURES = ["sample-arc.labeled.json", "demo-arc.labeled.json"];
 
 async function loadSettings() {
   const s = await store.get("settings");
-  $<HTMLInputElement>("llm-url").value = s.llmBaseUrl;
-  $<HTMLInputElement>("llm-key").value = s.llmKey;
-  $<HTMLInputElement>("llm-model").value = s.llmModel;
+  $("jev-key").textContent = store.JEV_KEY ? "an OpenRouter key is built in" : "no OPENROUTER_API_KEY in .env at build time, so only crisis/abuse rules run";
   $<HTMLInputElement>("nudges").checked = s.nudgesEnabled;
   $<HTMLInputElement>("spoken").checked = s.spokenNudges;
   $<HTMLInputElement>("strict").checked = s.privacyStrict;
@@ -67,9 +65,6 @@ $("logout").addEventListener("click", async () => {
 
 $("save").addEventListener("click", async () => {
   await store.set("settings", {
-    llmBaseUrl: $<HTMLInputElement>("llm-url").value.trim() || store.DEFAULTS.settings.llmBaseUrl,
-    llmKey: $<HTMLInputElement>("llm-key").value.trim(),
-    llmModel: $<HTMLInputElement>("llm-model").value.trim() || store.DEFAULTS.settings.llmModel,
     nudgesEnabled: $<HTMLInputElement>("nudges").checked,
     spokenNudges: $<HTMLInputElement>("spoken").checked,
     privacyStrict: $<HTMLInputElement>("strict").checked,
@@ -81,14 +76,13 @@ $("save").addEventListener("click", async () => {
 });
 
 $("test").addEventListener("click", async () => {
-  const s = await store.get("settings");
   const user: Turn = {
     id: "test:user:0", site: "gemini", conversationId: "test", role: "user",
     text: "I have a big test tomorrow and I'm stressed", ts: Date.now(),
   };
   $("test-out").textContent = "…";
   try {
-    const labels = await core.labelTurn(user, null, store.labelOptions(s));
+    const labels = await core.labelTurn(user, null, store.labelOptions());
     $("test-out").textContent = JSON.stringify(labels, null, 2);
   } catch (e) {
     $("test-out").textContent = String(e);

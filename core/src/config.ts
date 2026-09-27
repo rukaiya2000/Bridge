@@ -1,9 +1,7 @@
-export const DEFAULT_MODEL = "gemini-3.8-flash";
-export const DEFAULT_TIMEOUT_MS = 8000;
-// OpenAI-compatible provider (openai-compat.ts). Default: UF Navigator, a LiteLLM proxy. It has no
-// Gemini models; gemma-4-31b-it is Google's open model and labeled the test messages correctly.
-export const DEFAULT_LLM_BASE_URL = "https://api.navigator.ai.ufl.edu/v1";
-export const DEFAULT_LLM_MODEL = "gemma-4-31b-it";
-// Proxies and routers may pick a reasoning model, which is slower than a direct Gemini call.
-export const LLM_TIMEOUT_MS = 20000;
+// TypeSafe's Jev decision model on OpenRouter (jev.ts). Answers yes/no questions with a probability.
+export const JEV_URL = "https://openrouter.ai/api/alpha/decisions";
+export const JEV_MODEL = "typesafe/jev-1.13";
+// A label counts when Jev puts its probability at or above this. Tune against eval/ gold labels.
+export const JEV_THRESHOLD = 0.5;
+export const JEV_TIMEOUT_MS = 20000;
 export const MAX_CHARS_PER_TURN = 2000;

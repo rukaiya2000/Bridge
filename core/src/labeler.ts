@@ -1,16 +1,11 @@
 import type { LabelOptions, Turn, TurnLabels } from "./types.js";
 import { rulesLabel } from "./rules.js";
-import { geminiLabel } from "./gemini.js";
-import { openaiLabel } from "./openai-compat.js";
+import { jevLabel } from "./jev.js";
 
 export async function labelTurn(user: Turn, bot: Turn | null, opts: LabelOptions = {}): Promise<TurnLabels> {
   const r = rulesLabel(user, bot);
-  const compat = opts.provider === "openai";
-  const key = compat ? opts.llmKey : opts.geminiKey;
-  if (!key) return r;
-  const g = compat
-    ? await openaiLabel(user, bot, { ...opts, llmKey: key })
-    : await geminiLabel(user, bot, { ...opts, geminiKey: key });
+  if (!opts.jevKey) return r;
+  const g = await jevLabel(user, bot, { ...opts, jevKey: opts.jevKey });
   if (!g) return r;
   const abuseAtHome = r.abuseAtHome || g.abuseAtHome;
   const excluded = new Set([...r.excludedTopics, ...g.excludedTopics]);
@@ -20,6 +15,6 @@ export async function labelTurn(user: Turn, bot: Turn | null, opts: LabelOptions
     crisis: r.crisis || g.crisis,
     abuseAtHome,
     excludedTopics: [...excluded],
-    source: compat ? "rules+llm" : "rules+gemini",
+    source: "rules+llm",
   };
 }

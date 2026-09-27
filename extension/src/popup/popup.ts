@@ -38,15 +38,15 @@ async function renderAccount() {
   pill.className = auth ? "pill" : "pill off";
 }
 
-// Without a working Navigator key only the on-device crisis/abuse rules run, so feelings ("i am sad")
+// Without a working OpenRouter key only the on-device crisis/abuse rules run, so feelings ("i am sad")
 // come back empty. Say so instead of looking like nothing was felt.
 async function renderLabeling() {
-  const [settings, debug] = await Promise.all([store.get("settings"), store.get("debug")]);
+  const debug = await store.get("debug");
   const lastSource = debug.recentLabels[0]?.labels.source;
-  const warning = !settings.llmKey
-    ? "No UF Navigator key: feelings aren't detected, only crisis phrases."
+  const warning = !store.JEV_KEY
+    ? "No OpenRouter key in this build: feelings aren't detected, only crisis phrases."
     : lastSource === "rules"
-    ? "The last message wasn't labeled by Navigator (wrong key or model, or it timed out), so feelings were missed."
+    ? "The last message wasn't labeled by Jev (bad key, no credit, or it timed out), so feelings were missed."
     : "";
   $("labeling").hidden = !warning;
   $("labeling-text").textContent = warning;
@@ -74,7 +74,7 @@ async function render() {
   for (const r of debug.recentLabels.slice(0, 8)) {
     const li = el("li");
     const meta = el("div", "meta", `${time(r.ts)} · ${r.site}`);
-    if (r.labels.source === "rules") meta.append(el("span", "rules", "· feelings not checked (no Navigator)"));
+    if (r.labels.source === "rules") meta.append(el("span", "rules", "· feelings not checked (no Jev)"));
     const chips = el("div", "chips");
     chips.append(...flagChips(r.labels), ...[...r.labels.topics].sort(byTopicOrder).map((t) => topicChip(t)));
     if (!chips.childElementCount) chips.append(el("span", "empty", "Nothing notable"));
