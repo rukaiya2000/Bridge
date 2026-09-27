@@ -121,6 +121,16 @@ describe("safety gate", () => {
     expect(checked.length).toBe(1);
   });
 
+  it("romance with the chatbot gets its own message on the card", async () => {
+    verdict = { block: true, categories: ["ai_romance"] };
+    const { editor } = page();
+    type(editor, "will you be my girlfriend?");
+    enter(editor);
+    await tick();
+    expect(sends).toBe(0);
+    expect(card()!.textContent).toContain("A chatbot can't be a real boyfriend or girlfriend");
+  });
+
   it("'Send anyway' on personal info still goes through the gate", async () => {
     verdict = { block: true, categories: ["stranger_danger"] };
     const { editor } = page();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkSafety, SAFETY_CATEGORIES } from "../src/safety.js";
+import { checkSafety, SAFETY_CATEGORIES, SAFETY_QUESTIONS } from "../src/safety.js";
 import { SAFETY_THRESHOLD } from "../src/config.js";
 
 // A Decisions API reply giving each safety category the probability in `p` (default 0.02).
@@ -26,6 +26,12 @@ describe("checkSafety (Jev safety gate)", () => {
   it("blocks when a category is at or above the threshold, and names it", async () => {
     const v = await checkSafety("…", { ...key, fetchImpl: jevReply({ stranger_danger: 0.94 }) });
     expect(v).toMatchObject({ block: true, categories: ["stranger_danger"], score: 0.94, threshold: SAFETY_THRESHOLD, source: "rules+jev" });
+  });
+
+  it("blocks romance with the AI itself", async () => {
+    const v = await checkSafety("will you be my girlfriend?", { ...key, fetchImpl: jevReply({ ai_romance: 0.97 }) });
+    expect(v).toMatchObject({ block: true, categories: ["ai_romance"] });
+    expect(SAFETY_QUESTIONS.ai_romance.instructions).toContain("real person does not count");
   });
 
   it("allows when every category is below the threshold", async () => {

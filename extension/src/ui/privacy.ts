@@ -95,7 +95,11 @@ export function showSafetyBlock(root: ShadowRoot, categories: string[]): Promise
   return new Promise((resolve) => {
     const c = card("privacy", "This message wasn't sent");
     c.setAttribute("role", "alertdialog");
-    c.append(el("p", "lead", "This sounds like something to talk about with someone you trust, not a chatbot."));
+    // Romance with the chatbot on its own gets its own line; anything dangerous gets the trusted-person one.
+    const romanceOnly = categories.length > 0 && categories.every((x) => x === "ai_romance");
+    c.append(el("p", "lead", romanceOnly
+      ? "A chatbot can't be a real boyfriend or girlfriend. The people in your life can be there for you in ways it can't."
+      : "This sounds like something to talk about with someone you trust, not a chatbot."));
     const done = () => { c.remove(); resolve(); };
     c.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); done(); } });
     const back = el("button", "primary", "Edit my message");

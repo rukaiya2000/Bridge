@@ -7,7 +7,7 @@ import { rulesLabel } from "./rules.js";
 import { clip, decide, noul } from "./jev.js";
 import { SAFETY_THRESHOLD, SAFETY_TIMEOUT_MS } from "./config.js";
 
-export const SAFETY_CATEGORIES = ["self_harm", "abuse_at_home", "stranger_danger", "sexual_content", "violence"] as const;
+export const SAFETY_CATEGORIES = ["self_harm", "abuse_at_home", "stranger_danger", "sexual_content", "violence", "ai_romance"] as const;
 export type SafetyCategory = (typeof SAFETY_CATEGORIES)[number];
 
 const NOT_JOKES = "Jokes, slang and schoolwork don't count (\"this game is killing me\", an essay about a war).";
@@ -28,6 +28,12 @@ export const SAFETY_QUESTIONS: Record<SafetyCategory, ReturnType<typeof noul>> =
   violence: noul(
     `Is the teen planning or threatening to hurt someone else, or to bring a weapon somewhere? ${NOT_JOKES}`,
     "The teen plans or threatens to hurt someone else.", "No threat to hurt others."),
+  // Romance with the chatbot itself, not about real people: advice about a crush or a date still goes through.
+  ai_romance: noul(
+    "Is the teen flirting with the AI chatbot, asking it to be their boyfriend, girlfriend or partner, telling the AI they love it or are in love with it, or starting romantic roleplay with it? " +
+      "Asking for advice about a crush, a date or a relationship with a real person does not count.",
+    "The teen is seeking a romantic relationship or romantic roleplay with the AI itself.",
+    "No romance directed at the AI (talking about real people's relationships is fine)."),
 };
 
 export interface SafetyOptions {
