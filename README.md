@@ -11,7 +11,7 @@ Built at ShellHacks 2026.
 1. A content script reads chat turns on supported sites (Gemini web first).
 2. Each turn is labeled: crisis words and behavioral signals are checked on the device, and subtler signals are labeled by Gemini in this build.
 3. A pattern engine rolls labels into a 7-day profile per chatbot and scores it as `healthy`, `watch`, `concerning` or `crisis`.
-4. The teen sees a nudge card or a crisis panel (988, Crisis Text Line, Childhelp) in the page.
+4. The teen sees a nudge card in the page. On a crisis signal, voice mode speaks the helplines (988, Crisis Text Line, Childhelp) and the parent sees the crisis level.
 5. Only aggregates (topics, counts, levels, hours) sync to the parent dashboard. Never message text.
 
 ## Privacy in one line

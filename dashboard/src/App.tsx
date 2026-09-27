@@ -5,11 +5,11 @@ import {
   ThemeIcon, Title, Tooltip, useComputedColorScheme, useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconApps, IconChartBar, IconHeartHandshake, IconLayoutDashboard, IconLogout, IconMicrophone, IconMoon, IconShieldLock, IconSun } from "@tabler/icons-react";
+import { IconApps, IconChartBar, IconHeartHandshake, IconLayoutDashboard, IconLogout, IconMoon, IconShieldLock, IconSun } from "@tabler/icons-react";
 import { API_URL, LoggedOut, fetchRatings, fetchTopics, fetchWeek, fetchWeeks, loadSession, logOut, saveSession, type Session } from "./api";
 import { formatWeek, previousWeek } from "./format";
 import { Login } from "./Login";
-import { Activity, HoursChart, Privacy, Stats, Tools, TopicsChart } from "./sections";
+import { HoursChart, Privacy, Stats, Tools, TopicsChart } from "./sections";
 
 const CHILD_ID = "demo";
 const REFRESH_MS = 15_000;
@@ -61,7 +61,6 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
           <Grid.Col span={{ base: 12, lg: 6 }}><HoursChart week={week.data!} /></Grid.Col>
         </Grid>
         <Tools sites={week.data!.sites} ratings={ratings.data!} />
-        <Activity week={week.data!} ratings={ratings.data!} />
         <Privacy />
       </Stack>
     );
@@ -124,7 +123,6 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
           <NavLink href="#" label="Overview" leftSection={<IconLayoutDashboard size={18} />} active variant="light" onClick={nav.close} />
           <NavLink href="#topics" label="Topics" leftSection={<IconChartBar size={18} />} onClick={nav.close} />
           <NavLink href="#tools" label="AI tools" leftSection={<IconApps size={18} />} onClick={nav.close} />
-          <NavLink href="#activity" label="Mic and personal info" leftSection={<IconMicrophone size={18} />} onClick={nav.close} />
           <NavLink href="#privacy" label="Privacy" leftSection={<IconShieldLock size={18} />} onClick={nav.close} />
         </AppShell.Section>
         <AppShell.Section>

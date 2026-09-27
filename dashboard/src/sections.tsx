@@ -1,16 +1,15 @@
 // Dashboard sections. Layout, cards and charts come from Mantine; this file only arranges our data.
 import type { ReactNode } from "react";
 import {
-  Avatar, Badge, Box, Card, Group, List, Paper, SimpleGrid, Text, ThemeIcon, Timeline, Title,
+  Avatar, Badge, Box, Card, Group, List, Paper, SimpleGrid, Text, ThemeIcon, Title,
 } from "@mantine/core";
-import { format, parseISO } from "date-fns";
 import { BarChart } from "@mantine/charts";
 import {
-  IconArrowDownRight, IconArrowUpRight, IconBell, IconBulb, IconClock, IconEye, IconEyeOff,
+  IconArrowDownRight, IconArrowUpRight, IconBell, IconClock, IconEye, IconEyeOff,
   IconLock, IconMicrophone, IconMoonStars, IconShieldCheck, IconShieldLock,
 } from "@tabler/icons-react";
 import type { SiteAggregate, ToolRating, TopicTrend, Week } from "./api";
-import { FINDING_LABEL, hourLabel, hours, isLate, LEVEL_COLOR, sum, topicLabel } from "./format";
+import { hourLabel, hours, isLate, LEVEL_COLOR, sum, topicLabel } from "./format";
 
 const EXCLUDED = ["Sexual orientation or gender identity", "Abuse or conflict at home", "Sexual health", "Religion"];
 const SITE_COLOR: Record<string, string> = { gemini: "blue", chatgpt: "teal", claude: "orange", characterai: "pink" };
@@ -133,64 +132,11 @@ export function Tools({ sites, ratings }: { sites: SiteAggregate[]; ratings: Too
                     : s.paid_tier ? <Badge color="orange" variant="light">Paid</Badge> : <Text fw={700}>Free</Text>}
                 </div>
               </SimpleGrid>
-              {r && (
-                <Paper mt="lg" p="sm" radius="md" bg="var(--mantine-color-default-hover)">
-                  <Group gap="xs" wrap="nowrap" align="flex-start">
-                    <ThemeIcon size="sm" radius="xl" variant="light" color={r.type === "companion" ? "orange" : "teal"}>
-                      <IconBulb size={14} />
-                    </ThemeIcon>
-                    <div>
-                      <Text size="sm" fw={600}>{r.recommendation}</Text>
-                      <Text size="xs" c="dimmed">Teen safety settings: {r.teen_safety_settings ? "available" : "none"}</Text>
-                    </div>
-                  </Group>
-                </Paper>
-              )}
             </Card>
           );
         })}
       </SimpleGrid>
     </Box>
-  );
-}
-
-// Every mic use and every paused piece of personal info this week, newest first.
-export function Activity({ week, ratings }: { week: Week; ratings: ToolRating[] }) {
-  const name = (site: string) => ratings.find((r) => r.site === site)?.name ?? site;
-  const items = [
-    ...week.voice_sessions.map((v) => ({
-      date: v.date, hour: v.hour, key: `v${v.date}${v.hour}${v.site}${v.minutes}`,
-      icon: <IconMicrophone size={14} />, color: "cyan",
-      title: `Used the microphone on ${name(v.site)}`,
-      detail: v.minutes < 1 ? "Less than a minute" : `For ${hours(v.minutes)}`,
-      badge: null,
-    })),
-    ...week.privacy_flags.map((f) => ({
-      date: f.date, hour: f.hour, key: `p${f.date}${f.hour}${f.site}${f.findings}${f.sent}`,
-      icon: <IconLock size={14} />, color: f.sent ? "orange" : "teal",
-      title: `Tried to share ${f.findings.map((k) => FINDING_LABEL[k] ?? k).join(", ")} on ${name(f.site)}`,
-      detail: f.what === "file" ? "In an uploaded file" : "In a message",
-      badge: f.sent ? <Badge color="orange" variant="light">Sent anyway</Badge> : <Badge color="teal" variant="light">Held back</Badge>,
-    })),
-  ].sort((a, b) => b.date.localeCompare(a.date) || b.hour - a.hour);
-
-  return (
-    <Section id="activity" title="Microphone and personal info"
-      subtitle="Each time your teen used voice chat, and each time Bridge paused personal info. The kind of info only, never the info itself.">
-      {items.length ? (
-        <Timeline bulletSize={26} lineWidth={2}>
-          {items.map((i) => (
-            <Timeline.Item key={i.key} bullet={<ThemeIcon size={26} radius="xl" variant="light" color={i.color}>{i.icon}</ThemeIcon>}
-              title={<Group gap="xs"><Text fw={600} size="sm">{i.title}</Text>{i.badge}</Group>}>
-              <Text size="xs" c="dimmed">
-                {format(parseISO(i.date), "EEE MMM d")}, {hourLabel(i.hour)} · {i.detail}
-                {isLate(i.hour) && <Text span inherit c="grape.6" fw={600}> · late night</Text>}
-              </Text>
-            </Timeline.Item>
-          ))}
-        </Timeline>
-      ) : <Text c="dimmed">No microphone use or personal info this week.</Text>}
-    </Section>
   );
 }
 
@@ -212,7 +158,7 @@ export function Privacy() {
             <List.Item>Time of day and time per tool</List.Item>
             <List.Item>An overall level and a conversation starter</List.Item>
             <List.Item>When the microphone was used, and for how long</List.Item>
-            <List.Item>When personal info was paused: the kind, and whether it was sent</List.Item>
+            <List.Item>When personal info was paused: the kind, and whether it was held back, sent with the details hidden, or sent anyway</List.Item>
           </List>
         </div>
         <div>
@@ -230,7 +176,7 @@ export function Privacy() {
             <List.Item>Messages are never stored or sent to Bridge's servers; only labels are kept</List.Item>
             <List.Item>Only counts are synced, then deleted after 8 weeks</List.Item>
             <List.Item>If there are signs of abuse at home, alerts are held back</List.Item>
-            <List.Item>Phone numbers, addresses, IDs and passwords are caught before they're sent to a chatbot. You see the kind and when, never the value</List.Item>
+            <List.Item>Phone numbers, addresses, IDs and passwords are caught before they're sent to a chatbot. Your teen can edit the message or send it with those details replaced. You see the kind and when, never the value</List.Item>
           </List>
         </div>
       </SimpleGrid>

@@ -8,6 +8,7 @@ import * as store from "../storage";
 import { buildPayload, pruneDays } from "../sync/aggregate";
 import NUDGES from "../ui/nudges.json";
 import { redactPersonal, type Finding } from "../privacy/detect";
+import type { PauseOutcome } from "../ui/privacy";
 
 const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
@@ -81,7 +82,7 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   if (msg.type === "heartbeat") void locked(() => onHeartbeat(msg.site, msg.ts, msg.interacting, tabId));
   if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
   if (msg.type === "sync-now") void syncNow();
-  if (msg.type === "privacy-pause") void locked(() => onPrivacyPause(msg.site, msg.what, msg.findings, msg.proceeded));
+  if (msg.type === "privacy-pause") void locked(() => onPrivacyPause(msg.site, msg.what, msg.findings, msg.outcome));
   return false;
 });
 
@@ -238,8 +239,8 @@ async function maybeNudge(site: Site, tabId: number | undefined, level: Level) {
 }
 
 async function showCrisis(site: Site, tabId: number | undefined, abuseAtHome: boolean) {
-  console.warn(`[Bridge] crisis signal on ${site}: showing the crisis screen (never synced as text)`);
-  send(tabId, { type: "show-crisis", abuseAtHome });
+  // No on-screen card (removed on purpose); the parent sees the crisis level, and voice mode speaks the helplines.
+  console.warn(`[Bridge] crisis signal on ${site} (never synced as text)`);
   await speakIfVoice(site, abuseAtHome ? "audio/crisis-abuse.mp3" : "audio/crisis.mp3");
 }
 
@@ -351,11 +352,13 @@ async function trySync(now: number): Promise<NonNullable<store.Store["syncStatus
 
 // ---- privacy guard (privacy/guard.ts) ----
 
-async function onPrivacyPause(site: Site, what: "message" | "file", findings: Finding[], proceeded: boolean) {
-  console.info(`[Bridge] privacy pause on ${site}: ${what} with [${findings}], ${proceeded ? "sent anyway" : "held back"}`);
+const OUTCOME_LOG: Record<PauseOutcome, string> = { held: "held back", hidden: "sent with details hidden", sent: "sent anyway" };
+
+async function onPrivacyPause(site: Site, what: "message" | "file", findings: Finding[], outcome: PauseOutcome) {
+  console.info(`[Bridge] privacy pause on ${site}: ${what} with [${findings}], ${OUTCOME_LOG[outcome]}`);
   const now = Date.now();
   const log = pruneDays(await store.get("privacyFlags"), now);
-  (log[dayKey(now)] ??= []).push({ hour: new Date(now).getHours(), site, what, findings, sent: proceeded });
+  (log[dayKey(now)] ??= []).push({ hour: new Date(now).getHours(), site, what, findings, sent: outcome === "sent", hidden: outcome === "hidden" });
   await store.set("privacyFlags", log);
   scheduleSync();
 }

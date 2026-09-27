@@ -1,5 +1,6 @@
 import type { Site, Turn } from "../../core/src/types";
 import type { Finding } from "./privacy/detect";
+import type { PauseOutcome } from "./ui/privacy";
 
 // content script → service worker
 export type ToWorker =
@@ -12,12 +13,11 @@ export type ToWorker =
   // dashboard page (content/dashboard.ts): someone logged in there, so log the extension in too
   | { type: "dashboard-session"; token: string; email: string }
   // privacy guard paused a message or upload. Kinds of info only, never the values.
-  | { type: "privacy-pause"; site: Site; what: "message" | "file"; findings: Finding[]; proceeded: boolean };
+  | { type: "privacy-pause"; site: Site; what: "message" | "file"; findings: Finding[]; outcome: PauseOutcome };
 
 // service worker → content script (chrome.tabs.sendMessage to the sender tab)
 export type ToContent =
   | { type: "show-nudge"; variant: number }
-  | { type: "show-crisis"; abuseAtHome: boolean };
 
 // service worker → offscreen document
 export type ToOffscreen = { type: "play-audio"; file: string };

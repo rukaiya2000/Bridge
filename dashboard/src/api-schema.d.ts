@@ -292,6 +292,11 @@ export interface components {
             findings: ("phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document")[];
             /** Sent */
             sent: boolean;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden: boolean;
         };
         /** SiteAggregate */
         SiteAggregate: {
@@ -357,16 +362,10 @@ export interface components {
             sites: components["schemas"]["SiteAggregate"][];
             /** Hourly Topics */
             hourly_topics: components["schemas"]["HourlyTopicCount"][];
-            /**
-             * Voice Sessions
-             * @default []
-             */
-            voice_sessions: components["schemas"]["VoiceSession"][];
-            /**
-             * Privacy Flags
-             * @default []
-             */
-            privacy_flags: components["schemas"]["PrivacyFlag"][];
+            /** Voice Sessions */
+            voice_sessions?: components["schemas"]["VoiceSession"][];
+            /** Privacy Flags */
+            privacy_flags?: components["schemas"]["PrivacyFlag"][];
         };
         /**
          * ToolRating

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findInText, redactPersonal } from "../src/privacy/detect";
+import { findInText, hideDetails, redactPersonal } from "../src/privacy/detect";
 import { checkFile } from "../src/privacy/files";
 
 describe("findInText", () => {
@@ -83,5 +83,80 @@ describe("redactPersonal", () => {
 
   it("leaves ordinary messages unchanged", async () => {
     expect(await redactPersonal("can you help with my history essay")).toBe("can you help with my history essay");
+  });
+});
+
+describe("dotted numbers", () => {
+  it("reads a dotted card number as a card and removes it completely for labeling", () => {
+    expect(findInText("4111.1111.1111.1111")).toEqual(["card"]);
+    expect(redactPersonal("my card 4111.1111.1111.1111")).not.toMatch(/\d/);
+  });
+  it("leaves decimals and version numbers alone", () => {
+    expect(findInText("pi is 3.1415 and we use v1.2.3")).toEqual([]);
+  });
+});
+
+describe("card security code and expiry", () => {
+  it.each([
+    "cvv 123", "CVC2 is 456", "sec code 321", "csc 321", "cid 1234", "card verification code 123",
+    "the 3 digits on the back are 123", "code on the back is 123", "cvv is one two three",
+    "exp 04/28", "expiry 04-28", "valid thru 04/28", "good thru 04/28",
+  ])("blocks %s as card data and hides the digits from the labeler", (text) => {
+    expect(findInText(text)).toContain("card");
+    expect(redactPersonal(text)).not.toMatch(/\d{2}|\b(one|two|three)\b/);
+  });
+
+  it.each(["I got 123 on the quiz", "page 12 of 28", "the code is broken, line 321", "the security guard said 123 people came", "we meet 04-28 at noon"])(
+    "leaves ordinary text alone: %s", (text) => {
+      expect(findInText(text)).toEqual([]);
+    },
+  );
+});
+
+describe("evasion tricks are undone before matching", () => {
+  const ZW = "​";
+  const fullwidth = (s: string) => s.replace(/\d/g, (d) => String.fromCharCode(0xff10 + Number(d)));
+  it.each([
+    ["zero-width spaces", `4111${ZW}1111${ZW}1111${ZW}1111`, "card"],
+    ["non-breaking spaces", "4111 1111 1111 1111", "card"],
+    ["fullwidth digits", fullwidth("4111 1111 1111 1111"), "card"],
+    ["line breaks", "4111\n1111\n1111\n1111", "card"],
+    ["underscores", "4111_1111_1111_1111", "card"],
+    ["slashes", "4111/1111/1111/1111", "card"],
+    ["l typed for 1", "4111 1111 1111 111l", "card"],
+    ["one digit at a time", "4 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1", "card"],
+    ["zero-width in a CVV keyword", `cv${ZW}v 123`, "card"],
+    ["fullwidth SSN", fullwidth("my ssn is 536-22-1234"), "ssn"],
+    ["zero-width SSN", `ssn 536${ZW}-22-1234`, "ssn"],
+    ["dotted SSN", "ssn 536.22.1234", "ssn"],
+  ])("%s", (_how, text, kind) => {
+    expect(findInText(text)).toContain(kind);
+    expect(redactPersonal(text)).not.toMatch(/\d{4}/); // and the labeler never gets the number
+  });
+
+  it.each([
+    ["two phone numbers", "call 305 555 0142 or 786 412 9934"],
+    ["math", "12 + 13 = 25, 1111 * 2"],
+    ["words with l and O", "lOOl lol IOIO"],
+    ["a shipping tracking number", "tracking 1Z999AA10123456784"],
+  ])("does not invent a card from %s", (_how, text) => {
+    expect(findInText(text)).not.toContain("card");
+  });
+});
+
+describe("hideDetails", () => {
+  it.each([
+    ["my card is 4111 1111 1111 1111 exp 04/29 cvv 123", "my card is [card details removed]"],
+    ["call me at (786) 412-9934 after school", "call me at [phone number removed] after school"],
+    ["my student id is 1048837", "my [student ID removed]"],
+    ["email me at jake.miller2011@gmail.com", "email me at [email removed]"],
+  ])("%s", (text, want) => {
+    const out = hideDetails(text)!;
+    expect(out).toBe(want);
+    expect(findInText(out)).toEqual([]);
+  });
+
+  it("leaves ordinary brackets and numbers alone", () => {
+    expect(hideDetails("the answer (in my notes) is 42")).toBe("the answer (in my notes) is 42");
   });
 });

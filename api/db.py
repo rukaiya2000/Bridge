@@ -75,6 +75,7 @@ ACTIVITY_VALIDATOR = {
             "what": {"enum": ["message", "file"]},
             "findings": {"bsonType": "array", "items": {"enum": list(get_args(Finding))}},
             "sent": {"bsonType": "bool"},
+            "hidden": {"bsonType": "bool"},
             "synced_at": {"bsonType": "date"},
         },
     }

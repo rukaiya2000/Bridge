@@ -16,7 +16,7 @@ export type PerDaySite = Record<string, Partial<Record<Site, number>>>;
 // Per local day, a list of events. Timing and kinds of info only, never audio, text or values.
 export type DayLog<T> = Record<string, T[]>;
 export interface VoiceEntry { hour: number; site: Site; minutes: number }
-export interface PrivacyEntry { hour: number; site: Site; what: "message" | "file"; findings: Finding[]; sent: boolean }
+export interface PrivacyEntry { hour: number; site: Site; what: "message" | "file"; findings: Finding[]; sent: boolean; hidden?: boolean }
 
 export interface SyncPayload {
   child_id: string;
