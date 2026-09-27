@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ActionIcon, AppShell, Avatar, Badge, Box, Burger, Center, Code, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text,
+  ActionIcon, AppShell, Avatar, Badge, Box, Burger, Button, Center, CopyButton, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text,
   ThemeIcon, Title, Tooltip, useComputedColorScheme, useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -13,8 +13,6 @@ import { HoursChart, Privacy, Stats, Tools, TopicsChart } from "./sections";
 
 const CHILD_ID = "demo";
 const REFRESH_MS = 15_000;
-const seed = (token: string) =>
-  `for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H 'authorization: Bearer ${token}' -H 'content-type: application/json' --data @api/fixtures/$f.json; done`;
 
 export function App() {
   const [session, setSession] = useState(loadSession);
@@ -47,9 +45,10 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
 
   let body;
   if (failed) {
-    body = <Notice title="Can't reach the Bridge API" text={`Nothing answered at ${API_URL}. Start it with:`} code="uv run --group api uvicorn api.main:app --reload" />;
+    body = <Notice title="Can't load your dashboard" text="Bridge isn't responding right now. This page will keep trying, so you can leave it open."
+      devLabel={`Copy API start command (${API_URL})`} devCode="uv run --group api uvicorn api.main:app --reload" />;
   } else if (weeks.data?.length === 0) {
-    body = <Notice title="No data yet" text="You're logged in, but nothing has been synced to this account yet. Log in to the extension's Options page with the same account, or load the demo weeks from the repo root with:" code={seed(session.token)} />;
+    body = <Notice title="No data yet" text="Nothing has been shared with this account yet. Sign in to the Bridge extension on your teen's browser with this same account, and their weekly overview will show up here." />;
   } else if (!ready) {
     body = <Center h={400}><Loader /></Center>;
   } else {
@@ -137,13 +136,22 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   );
 }
 
-function Notice({ title, text, code }: { title: string; text: string; code: string }) {
+// devCode is a shell command for developers: copyable in `npm run dev` builds only, never shown on screen.
+function Notice({ title, text, devLabel, devCode }: { title: string; text: string; devLabel?: string; devCode?: string }) {
   return (
     <Center h={420}>
       <Paper withBorder p="xl" radius="lg" maw={640}>
         <Title order={3} mb="xs">{title}</Title>
-        <Text c="dimmed" mb="md">{text}</Text>
-        <Code block>{code}</Code>
+        <Text c="dimmed">{text}</Text>
+        {import.meta.env.DEV && devCode && (
+          <CopyButton value={devCode}>
+            {({ copied, copy }) => (
+              <Button mt="md" size="xs" variant="subtle" color={copied ? "teal" : "gray"} onClick={copy}>
+                {copied ? "Copied" : devLabel}
+              </Button>
+            )}
+          </CopyButton>
+        )}
       </Paper>
     </Center>
   );
