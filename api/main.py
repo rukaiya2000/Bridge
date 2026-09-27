@@ -6,13 +6,15 @@ Load the demo weeks into your account (TOKEN from /auth/login):
   for f in sample_prev_week sample_week; do curl -X POST localhost:8000/sync -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' --data @api/fixtures/$f.json; done
 """
 
+import json
 import logging
 from collections import Counter
 from contextlib import asynccontextmanager
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from bson import ObjectId
+from pydantic import BaseModel
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -116,6 +118,30 @@ def sync(payload: SyncPayload, session: CurrentSession, db: Db) -> dict:
     )
     store.save_week(db, session.account_id, payload)
     return {"stored": True}
+
+
+class JevExchange(BaseModel):
+    """One Jev call the extension made, sent only when its Options → "Debug: print … Jev" box is ticked."""
+
+    kind: str
+    site: str
+    url: str
+    request: Any
+    ms: int
+    status: int | None = None
+    response: Any = None
+    error: str | None = None
+
+
+@app.post("/debug/jev")
+def debug_jev(x: JevExchange, session: CurrentSession) -> dict:
+    """Prints the request and response in this terminal. Never stored. Debug only: includes message text."""
+    result = f"status={x.status}" if x.error is None else f"error={x.error}"
+    log.info(
+        "jev %s site=%s %s ms=%d\n--> POST %s\n%s\n<-- response\n%s",
+        x.kind, x.site, result, x.ms, x.url, json.dumps(x.request, indent=2), json.dumps(x.response, indent=2),
+    )
+    return {"logged": True}
 
 
 @app.get("/children/{child_id}/weeks")

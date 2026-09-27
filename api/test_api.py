@@ -267,3 +267,13 @@ def test_voice_sessions_and_privacy_flags_are_capped(client):
     assert client.post("/sync", json={**PAYLOAD, "privacy_flags": [flag] * 1001}).status_code == 422
     assert client.post("/sync", json={**PAYLOAD, "voice_sessions": [{**voice, "minutes": 100_000}]}).status_code == 422
     assert client.post("/sync", json={**PAYLOAD, "voice_sessions": [voice], "privacy_flags": [flag]}).status_code == 200
+
+
+def test_debug_jev_prints_the_exchange_and_needs_login(client, caplog):
+    x = {"kind": "safety", "site": "chatgpt", "url": "https://openrouter.ai/api/alpha/decisions", "ms": 812,
+         "request": {"model": "typesafe/jev-1.13", "state": {"teen_message": "hi"}}, "status": 200,
+         "response": {"answers": {"self_harm": {"type": "noul", "noul": 0.02}}}}
+    assert client.post("/debug/jev", json=x, headers={"authorization": ""}).status_code == 401
+    with caplog.at_level("INFO", logger="bridge.api"):
+        assert client.post("/debug/jev", json=x).json() == {"logged": True}
+    assert "typesafe/jev-1.13" in caplog.text and '"noul": 0.02' in caplog.text

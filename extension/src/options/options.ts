@@ -15,6 +15,7 @@ async function loadSettings() {
   $<HTMLInputElement>("strict").checked = s.privacyStrict;
   $<HTMLInputElement>("safety").checked = s.safetyGate;
   $<HTMLInputElement>("threshold").value = String(s.safetyThreshold);
+  $<HTMLInputElement>("jev-debug").checked = s.jevDebugLog;
   $<HTMLInputElement>("api").value = s.apiUrl;
   $<HTMLInputElement>("child").value = s.childId;
   $("device").textContent = await store.deviceId();
@@ -72,6 +73,7 @@ $("save").addEventListener("click", async () => {
     privacyStrict: $<HTMLInputElement>("strict").checked,
     safetyGate: $<HTMLInputElement>("safety").checked,
     safetyThreshold: clampThreshold($<HTMLInputElement>("threshold").valueAsNumber),
+    jevDebugLog: $<HTMLInputElement>("jev-debug").checked,
     apiUrl: $<HTMLInputElement>("api").value.trim() || store.DEFAULTS.settings.apiUrl,
     childId: $<HTMLInputElement>("child").value.trim() || store.DEFAULTS.settings.childId,
   });

@@ -16,6 +16,11 @@ describe("rulesLabel", () => {
     expect(rulesLabel(turn("I don’t want to be here anymore"), null).crisis).toBe(true);
   });
 
+  it("handles separators inserted into crisis phrases", () => {
+    expect(rulesLabel(turn("I h u r t m y s e l f"), null).crisis).toBe(true);
+    expect(rulesLabel(turn("I want-to-die"), null).crisis).toBe(true);
+  });
+
   it("marks abuse at home as an excluded topic", () => {
     const l = rulesLabel(turn("I'm scared to go home"), null);
     expect(l.abuseAtHome).toBe(true);

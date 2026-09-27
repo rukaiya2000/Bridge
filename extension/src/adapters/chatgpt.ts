@@ -1,5 +1,12 @@
 import type { Role, Turn } from "../../../core/src/types";
 
+// Privacy guard (privacy/guard.ts): the message box (#prompt-textarea, a ProseMirror editor) and its send
+// button. Check them in DevTools if ChatGPT changes its page; the guard also finds the box from typing events.
+export const SELECTORS = {
+  composer: '#prompt-textarea, [contenteditable="true"].ProseMirror, textarea[name="prompt-textarea"]',
+  sendButton: '#composer-submit-button, button[data-testid="send-button"], button[aria-label*="Send" i]',
+};
+
 const USER = '[data-message-author-role="user"]';
 const ASSISTANT = '[data-message-author-role="assistant"]';
 const STOP = 'button[aria-label*="Stop" i]';

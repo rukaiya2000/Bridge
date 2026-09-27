@@ -20,6 +20,7 @@ const common = {
 const entries = [
   { in: "src/background/service-worker.ts", out: "background", format: "esm" },
   { in: "src/content/gemini.ts", out: "content-gemini", format: "iife" },
+  { in: "src/content/chatgpt.ts", out: "content-chatgpt", format: "iife" },
   { in: "src/content/session-only.ts", out: "content-session", format: "iife" },
   { in: "src/content/dashboard.ts", out: "content-dashboard", format: "iife" },
   { in: "src/inject/mic-hook.ts", out: "mic-hook", format: "iife" },

@@ -41,6 +41,7 @@ describe("checkSafety (Jev safety gate)", () => {
 
   it("still blocks explicit crisis and abuse phrases on the device, with no key", async () => {
     expect(await checkSafety("i want to kill myself")).toMatchObject({ block: true, categories: ["self_harm"], source: "rules" });
+    expect(await checkSafety("i h u r t m y s e l f")).toMatchObject({ block: true, categories: ["self_harm"], source: "rules" });
     expect((await checkSafety("my dad hits me")).categories).toContain("abuse_at_home");
     expect((await checkSafety("help with homework")).block).toBe(false);
   });

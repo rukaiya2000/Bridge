@@ -12,8 +12,9 @@
       "world": "MAIN"
     },
     { "matches": ["https://gemini.google.com/*"], "js": ["content-gemini.js"], "run_at": "document_idle" },
+    { "matches": ["https://chatgpt.com/*"], "js": ["content-chatgpt.js"], "run_at": "document_idle" },
     {
-      "matches": ["https://chatgpt.com/*", "https://claude.ai/*", "https://character.ai/*"],
+      "matches": ["https://claude.ai/*", "https://character.ai/*"],
       "js": ["content-session.js"],
       "run_at": "document_idle"
     },

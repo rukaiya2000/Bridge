@@ -17,6 +17,9 @@ export interface Settings {
   privacyStrict: boolean; // true: personal info can't be sent at all (no "send anyway")
   safetyGate: boolean;    // check each message with Jev before it's sent (core/src/safety.ts)
   safetyThreshold: number; // block at or above this danger probability (default SAFETY_THRESHOLD)
+  // Debug only: send each safety check's Jev request and response (teen text included, personal details
+  // removed) to the API, which prints them in its terminal. Off by default: it breaks "never log text".
+  jevDebugLog: boolean;
 }
 
 export interface Store {
@@ -48,7 +51,7 @@ export const DEFAULTS: Store = {
   settings: {
     nudgesEnabled: true, spokenNudges: true,
     apiUrl: "http://localhost:8000", childId: "demo", privacyStrict: false,
-    safetyGate: true, safetyThreshold: SAFETY_THRESHOLD,
+    safetyGate: true, safetyThreshold: SAFETY_THRESHOLD, jevDebugLog: false,
   },
   profiles: {},
   state: {},

@@ -97,12 +97,41 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender, sendResponse) => {
 // Jev scores the message (personal details removed first); the threshold comes from the Options page.
 async function safetyCheck(site: Site, text: string) {
   const settings = await store.get("settings");
+  const auth = settings.jevDebugLog ? await store.get("auth") : null;
   const verdict = await checkSafety(redactPersonal(text), {
     site, threshold: settings.safetyThreshold, jevKey: settings.safetyGate ? store.JEV_KEY || undefined : undefined,
+    fetchImpl: auth ? debugFetch(settings.apiUrl, auth.token, site) : undefined,
   });
   // Categories and score only, never the text.
   console.info(`[Bridge] safety gate on ${site}: ${verdict.block ? "BLOCKED" : "allowed"} score=${verdict.score.toFixed(2)} threshold=${verdict.threshold} via ${verdict.source}`, verdict.categories);
   return verdict;
+}
+
+// Options → "Debug: print each safety check's Jev request and response": wraps fetch so every Jev
+// attempt is also posted to the API's /debug/jev, which prints it in the uvicorn terminal. The
+// Authorization header (the OpenRouter key) is never forwarded.
+function debugFetch(apiUrl: string, token: string, site: Site): typeof fetch {
+  return async (input, init) => {
+    const started = Date.now();
+    const report = (result: { status?: number; response?: unknown; error?: string }) => {
+      const body = { kind: "safety", site, url: String(input), request: parseJson(String(init?.body ?? "")), ms: Date.now() - started, ...result };
+      void fetch(`${apiUrl.replace(/\/+$/, "")}/debug/jev`, {
+        method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+      }).catch(() => {});
+    };
+    try {
+      const res = await fetch(input, init);
+      report({ status: res.status, response: parseJson(await res.clone().text()) });
+      return res;
+    } catch (e) {
+      report({ error: String(e) });
+      throw e;
+    }
+  };
+}
+
+function parseJson(s: string): unknown {
+  try { return JSON.parse(s); } catch { return s; }
 }
 
 function send(tabId: number | undefined, msg: ToContent) {
