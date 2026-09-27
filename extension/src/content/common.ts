@@ -1,17 +1,15 @@
-// Shared by both content scripts: badge, heartbeat, voice relay, and nudge UI.
+// Shared by both content scripts: heartbeat, voice relay, and nudge UI.
 import type { Site } from "../../../core/src/types";
 import type { MicSignal, ToContent, ToWorker } from "../messages";
 import { markInteraction, siteFromHost, startHeartbeat } from "./heartbeat";
 import { toWorker } from "./send";
 import { mountShadow } from "../ui/shadow";
-import { showBadge } from "../ui/badge";
 import { showNudge } from "../ui/nudge";
 
 export function startCommon(): Site | null {
   const site = siteFromHost();
   if (!site) return null;
   const root = mountShadow();
-  showBadge(root);
 
   // Feature 8: the MAIN-world mic hook posts timing signals only. Never audio.
   let voiceActive = false;

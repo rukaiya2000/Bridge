@@ -173,3 +173,16 @@ describe("numbers after 'ssn'", () => {
     expect(findInText("the social 2024 event was fun")).toEqual([]);
   });
 });
+
+describe("numbers after 'card number' / 'credit card'", () => {
+  it("are card details, not a phone number, even when not a valid card number", () => {
+    expect(findInText("my card details are 1234567890")).toEqual(["card"]);
+    expect(findInText("credit card number 12345678")).toEqual(["card"]);
+    expect(hideDetails("my card details are 1234567890")).toBe("my [card details removed]"); // keyword goes too, like other keyword rules
+  });
+
+  it("leave short numbers and other cards alone", () => {
+    expect(findInText("pokemon card number 25")).toEqual([]);
+    expect(findInText("my card is 2024 edition")).toEqual([]);
+  });
+});

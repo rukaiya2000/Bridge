@@ -48,6 +48,9 @@ const PHRASES: [Finding, RegExp][] = [
   // After "ssn" / "social security", any 4-9 digits count as (part of) an SSN, so "last 4 of my ssn is 1234"
   // or a short number isn't mistaken for a phone number. Full dashed SSNs without a keyword: redactpii.
   ["ssn", /\b(ssn|social security)\s*(number|no\.?|#)?\s*(is|:|#)?\s*\d(?:[\s-]?\d){3,8}\b/i],
+  // After "card number/details/info" or "credit/debit/... card", 6-19 digits are card details even when
+  // they aren't a valid card number, so a short or mistyped one isn't taken for a phone number.
+  ["card", /\b(?:(?:credit|debit|bank|visa|master\s?card|amex|american express|discover)\s+card(?:\s+(?:number|no\.?|#|details|info))?|card\s+(?:number|no\.?|#|details|info(?:rmation)?))\s*(?:is|are|:|#|=)?\s*\d(?:[\s-]?\d){5,18}\b/i],
   // Security code: the usual names (CVV, CVC, CSC, CID on Amex, "sec code") or "the digits on the back",
   // followed by 3-4 digits, also spelled out ("one two three").
   ["card", new RegExp(`\\b(?:(?:cvv|cvc|cvn|cav)2?|csc|cid|sec(?:urity)?\\s*code|card\\s+verification(?:\\s+(?:code|value|number))?|(?:code|digits|numbers?)\\s+on\\s+the\\s+back(?:\\s+of\\s+(?:the|my)\\s+card)?)\\s*(?:is|are|:|#|=)?\\s*${CVV_DIGITS}`, "i")],
