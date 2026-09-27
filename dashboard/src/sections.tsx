@@ -102,7 +102,6 @@ export function Tools({ sites, ratings }: { sites: SiteAggregate[]; ratings: Too
     <Box id="tools" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" mb="md">
         <Title order={3}>AI tools used this week</Title>
-        <Text size="sm" c="dimmed">Ratings are hand-curated, never generated</Text>
       </Group>
       <Stack gap="lg" style={{ flex: 1 }}>
         {sorted.map((s) => {
