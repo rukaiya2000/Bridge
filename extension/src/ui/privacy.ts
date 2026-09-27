@@ -96,7 +96,6 @@ export function showSafetyBlock(root: ShadowRoot, categories: string[]): Promise
     const c = card("privacy", "This message wasn't sent");
     c.setAttribute("role", "alertdialog");
     c.append(el("p", "lead", "This sounds like something to talk about with someone you trust, not a chatbot."));
-    c.append(el("p", "why", "Your parent only sees that a message was held back, never what it said."));
     const done = () => { c.remove(); resolve(); };
     c.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); done(); } });
     const back = el("button", "primary", "Edit my message");
