@@ -23,3 +23,6 @@ eval/data/labels_cache.jsonl
 
 # Generated voice clips (regenerate with npm run voice -w extension)
 extension/static/audio/*.mp3
+
+# Claude Code local settings
+.claude/
