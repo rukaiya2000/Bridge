@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ActionIcon, AppShell, Avatar, Badge, Box, Burger, Button, Center, CopyButton, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text,
+  ActionIcon, Alert, AppShell, Avatar, Badge, Box, Burger, Button, Center, CopyButton, Grid, Group, Loader, NavLink, Paper, Select, Stack, Text,
   ThemeIcon, Title, Tooltip, useComputedColorScheme, useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -41,27 +41,32 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
   const failed = [weeks, week, topics, ratings].some((q) => q.isError);
   const expired = [weeks, week, topics].some((q) => q.error instanceof LoggedOut);
   useEffect(() => { if (expired) onLogout(); }, [expired, onLogout]);
-  const ready = week.data && topics.data && ratings.data;
+  // A new account with nothing synced still gets the full layout, minus the teen's own numbers.
+  const empty = weeks.data?.length === 0;
+  const ready = ratings.data && (empty || (week.data && topics.data));
 
   let body;
   if (failed) {
     body = <Notice title="Can't load your dashboard" text="Bridge isn't responding right now. This page will keep trying, so you can leave it open."
       devLabel={`Copy API start command (${API_URL})`} devCode="uv run --group api uvicorn api.main:app --reload" />;
-  } else if (weeks.data?.length === 0) {
-    body = <Notice title="No data yet" text="Nothing has been shared with this account yet. Sign in to the Bridge extension on your teen's browser with this same account, and their weekly overview will show up here." />;
   } else if (!ready) {
     body = <Center h={400}><Loader /></Center>;
   } else {
     body = (
       <Stack gap="xl">
-        <Stats week={week.data!} prev={prev.data ?? null} />
+        {empty && (
+          <Alert color="indigo" radius="lg" title="Nothing synced yet">
+            Sign in to the Bridge extension on your teen's browser with this same account. Their week fills in here on its own.
+          </Alert>
+        )}
+        <Stats week={week.data ?? null} prev={prev.data ?? null} />
         <Grid gutter="lg">
-          <Grid.Col span={{ base: 12, lg: 6 }}><TopicsChart topics={topics.data!} /></Grid.Col>
-          <Grid.Col span={{ base: 12, lg: 6 }}><HoursChart week={week.data!} /></Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 6 }}><TopicsChart topics={topics.data ?? null} /></Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 6 }}><HoursChart week={week.data ?? null} /></Grid.Col>
         </Grid>
         <Grid gutter="lg">
-          <Grid.Col span={{ base: 12, lg: 7 }}><Tools sites={week.data!.sites} ratings={ratings.data!} /></Grid.Col>
-          <Grid.Col span={{ base: 12, lg: 5 }}><Privacy /></Grid.Col>
+          {week.data && <Grid.Col span={{ base: 12, lg: 7 }}><Tools sites={week.data.sites} ratings={ratings.data!} /></Grid.Col>}
+          <Grid.Col span={{ base: 12, lg: week.data ? 5 : 12 }}><Privacy /></Grid.Col>
         </Grid>
       </Stack>
     );

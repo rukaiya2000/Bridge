@@ -48,8 +48,27 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   }
 });
 
+// Every login, logout and account switch goes through here. Data collected under an account is
+// synced to that account one last time and then deleted from this browser, and a login to a
+// different account starts empty too (dropping anything collected while logged out), so nothing
+// lands in another account. Logging in again as the same account keeps it.
+async function setAccount(next: store.Store["auth"]) {
+  const current = await store.get("auth");
+  if (current?.email === next?.email) return store.set("auth", next);
+  if (current) {
+    await syncNow();
+    const { apiUrl } = await store.get("settings");
+    await fetch(`${apiUrl.replace(/\/+$/, "")}/auth/logout`, { method: "POST", headers: { authorization: `Bearer ${current.token}` } }).catch(() => {});
+  }
+  await locked(async () => {
+    await store.resetData();
+    await store.set("auth", next);
+  });
+  if (next) void syncNow();
+}
+
 // Logging in on the dashboard logs the extension in too (content/dashboard.ts). It trades the
-// dashboard's token for its own, so logging out of one doesn't log out the other.
+// dashboard's token for its own, so the two sessions can be revoked separately.
 async function adoptDashboardSession(token: string, email: string) {
   const current = await store.get("auth");
   if (current?.email === email) return;
@@ -58,12 +77,18 @@ async function adoptDashboardSession(token: string, email: string) {
     const res = await fetch(`${apiUrl.replace(/\/+$/, "")}/auth/session`, { method: "POST", headers: { authorization: `Bearer ${token}` } });
     if (!res.ok) return console.warn(`[Bridge] couldn't pick up the dashboard login: API ${res.status}`);
     const body = await res.json();
-    await store.set("auth", { token: body.token, email: body.email });
+    await setAccount({ token: body.token, email: body.email });
     console.info(`[Bridge] logged in as ${body.email} from the dashboard`);
-    void syncNow();
   } catch (e) {
     console.warn(`[Bridge] couldn't pick up the dashboard login: ${String(e)}`);
   }
+}
+
+// Logging out on the dashboard logs the extension out too, if it's on the same account.
+async function dashboardLogout(email: string) {
+  if ((await store.get("auth"))?.email !== email) return;
+  await setAccount(null);
+  console.info(`[Bridge] logged out of ${email} from the dashboard`);
 }
 
 // A "!" on the toolbar icon while logged out.
@@ -80,6 +105,11 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender, sendResponse) => {
   const tabId = sender.tab?.id;
   if (msg.type === "turn") void onTurn(msg.turn, tabId);
   if (msg.type === "dashboard-session") void adoptDashboardSession(msg.token, msg.email);
+  if (msg.type === "dashboard-logout") void dashboardLogout(msg.email);
+  if (msg.type === "set-account") {
+    void setAccount(msg.auth).then(() => sendResponse(true));
+    return true;
+  }
   if (msg.type === "heartbeat") void locked(() => onHeartbeat(msg.site, msg.ts, msg.interacting, tabId));
   if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
   if (msg.type === "sync-now") void syncNow();

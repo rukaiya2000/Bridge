@@ -1,6 +1,7 @@
 // Runs on localhost pages, but only acts on the Bridge parent dashboard (it has <meta name="bridge-dashboard">).
 // When someone logs in there, the extension in this browser logs in to the same account (service
-// worker: adoptDashboardSession). Logging out of the dashboard leaves the extension logged in.
+// worker: adoptDashboardSession). Logging out there logs the extension out of that account too,
+// which also deletes the data it collected for it (service worker: setAccount).
 import type { ToWorker } from "../messages";
 import { toWorker } from "./send";
 
@@ -19,6 +20,8 @@ if (document.querySelector('meta[name="bridge-dashboard"]')) {
   } catch { /* storage blocked: wait for a login */ }
   // A login on this page from now on.
   window.addEventListener("message", (e) => {
-    if (e.source === window && e.data?.bridge === "dashboard-session") send(e.data.session);
+    if (e.source !== window) return;
+    if (e.data?.bridge === "dashboard-session") send(e.data.session);
+    if (e.data?.bridge === "dashboard-logout" && typeof e.data.email === "string") toWorker({ type: "dashboard-logout", email: e.data.email });
   });
 }

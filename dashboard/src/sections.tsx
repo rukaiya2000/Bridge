@@ -14,21 +14,22 @@ import { hourLabel, hours, isLate, LEVEL_COLOR, sum, topicLabel } from "./format
 const EXCLUDED = ["Sexual orientation or gender identity", "Abuse or conflict at home", "Sexual health", "Religion"];
 const SITE_COLOR: Record<string, string> = { gemini: "blue", chatgpt: "teal", claude: "orange", characterai: "pink" };
 
+// value null: nothing synced to this account yet.
 function Stat({ label, value, icon, color, now, before, format }: {
-  label: string; value: string; icon: ReactNode; color: string; now: number; before: number | null; format: (n: number) => string;
+  label: string; value: string | null; icon: ReactNode; color: string; now: number; before: number | null; format: (n: number) => string;
 }) {
   const diff = before === null ? null : now - before;
   return (
     <Paper withBorder p="lg" radius="lg">
-      <Group justify="space-between" align="flex-start">
-        <div>
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <div style={{ minWidth: 0 }}>
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>{label}</Text>
-          <Text fz={28} fw={700} mt={4}>{value}</Text>
+          <Text fz={28} fw={700} mt={4} c={value === null ? "dimmed" : undefined}>{value ?? "—"}</Text>
         </div>
-        <ThemeIcon size={44} radius="md" variant="light" color={color}>{icon}</ThemeIcon>
+        <ThemeIcon size={44} radius="md" variant="light" color={color} style={{ flexShrink: 0 }}>{icon}</ThemeIcon>
       </Group>
       <Text size="sm" mt="sm" c="dimmed">
-        {diff === null ? "No data for last week" : diff === 0 ? "Same as last week" : (
+        {value === null ? "Nothing synced yet" : diff === null ? "No data for last week" : diff === 0 ? "Same as last week" : (
           <Text span inherit c={diff > 0 ? "orange.7" : "teal.7"} fw={600}>
             {diff > 0 ? <IconArrowUpRight size={14} style={{ verticalAlign: -2 }} /> : <IconArrowDownRight size={14} style={{ verticalAlign: -2 }} />}
             {" "}{format(Math.abs(diff))} {diff > 0 ? "more" : "less"} than last week
@@ -39,21 +40,24 @@ function Stat({ label, value, icon, color, now, before, format }: {
   );
 }
 
-export function Stats({ week, prev }: { week: Week; prev: Week | null }) {
+// week null: nothing synced to this account yet, so every tile shows a dash.
+export function Stats({ week, prev }: { week: Week | null; prev: Week | null }) {
   const p = prev?.sites ?? null;
   const n = (x: number) => String(x);
+  const sites = week?.sites ?? [];
+  const show = (f: (x: number) => string, x: number) => (week ? f(x) : null);
   return (
     <SimpleGrid cols={{ base: 1, xs: 2, md: 3, xl: 5 }} spacing="lg">
-      <Stat label="Time on AI" value={hours(sum(week.sites, "active_minutes"))} icon={<IconClock size={24} />} color="indigo"
-        now={sum(week.sites, "active_minutes")} before={p && sum(p, "active_minutes")} format={hours} />
-      <Stat label="Late-night sessions" value={n(sum(week.sites, "late_night_sessions"))} icon={<IconMoonStars size={24} />} color="grape"
-        now={sum(week.sites, "late_night_sessions")} before={p && sum(p, "late_night_sessions")} format={n} />
-      <Stat label="Voice chat" value={hours(sum(week.sites, "voice_minutes"))} icon={<IconMicrophone size={24} />} color="cyan"
-        now={sum(week.sites, "voice_minutes")} before={p && sum(p, "voice_minutes")} format={hours} />
-      <Stat label="Nudges shown" value={n(sum(week.sites, "nudges_shown"))} icon={<IconBell size={24} />} color="yellow"
-        now={sum(week.sites, "nudges_shown")} before={p && sum(p, "nudges_shown")} format={n} />
-      <Stat label="Privacy pauses" value={n(sum(week.sites, "privacy_pauses"))} icon={<IconLock size={24} />} color="teal"
-        now={sum(week.sites, "privacy_pauses")} before={p && sum(p, "privacy_pauses")} format={n} />
+      <Stat label="Time on AI" value={show(hours, sum(sites, "active_minutes"))} icon={<IconClock size={24} />} color="indigo"
+        now={sum(sites, "active_minutes")} before={p && sum(p, "active_minutes")} format={hours} />
+      <Stat label="Late nights" value={show(n, sum(sites, "late_night_sessions"))} icon={<IconMoonStars size={24} />} color="grape"
+        now={sum(sites, "late_night_sessions")} before={p && sum(p, "late_night_sessions")} format={n} />
+      <Stat label="Voice chat" value={show(hours, sum(sites, "voice_minutes"))} icon={<IconMicrophone size={24} />} color="cyan"
+        now={sum(sites, "voice_minutes")} before={p && sum(p, "voice_minutes")} format={hours} />
+      <Stat label="Nudges shown" value={show(n, sum(sites, "nudges_shown"))} icon={<IconBell size={24} />} color="yellow"
+        now={sum(sites, "nudges_shown")} before={p && sum(p, "nudges_shown")} format={n} />
+      <Stat label="Privacy pauses" value={show(n, sum(sites, "privacy_pauses"))} icon={<IconLock size={24} />} color="teal"
+        now={sum(sites, "privacy_pauses")} before={p && sum(p, "privacy_pauses")} format={n} />
     </SimpleGrid>
   );
 }
@@ -68,20 +72,28 @@ function Section({ id, title, subtitle, children }: { id?: string; title: string
   );
 }
 
-export function TopicsChart({ topics }: { topics: TopicTrend[] }) {
-  const data = topics.map((t) => ({ topic: topicLabel(t.topic), last_week: t.last_week, this_week: t.this_week }));
+// topics null: nothing synced to this account yet.
+export function TopicsChart({ topics }: { topics: TopicTrend[] | null }) {
+  const data = (topics ?? []).map((t) => ({ topic: topicLabel(t.topic), last_week: t.last_week, this_week: t.this_week }));
   return (
     <Section id="topics" title="Topics this week vs last week" subtitle="How often each topic came up. Topics only, never words.">
       {data.length ? (
         <BarChart h={Math.max(220, data.length * 56)} data={data} dataKey="topic" orientation="vertical" withLegend
           legendProps={{ verticalAlign: "top", height: 36 }} yAxisProps={{ width: 90 }} gridAxis="x" barProps={{ radius: 6 }}
           series={[{ name: "last_week", label: "Last week", color: "indigo.2" }, { name: "this_week", label: "This week", color: "indigo.6" }]} />
-      ) : <Text c="dimmed">No topics this week.</Text>}
+      ) : <Text c="dimmed">{topics ? "No topics this week." : "Topics show up here after the extension's first sync."}</Text>}
     </Section>
   );
 }
 
-export function HoursChart({ week }: { week: Week }) {
+export function HoursChart({ week }: { week: Week | null }) {
+  if (!week) {
+    return (
+      <Section title="Time of day" subtitle="When topics came up across the week.">
+        <Text c="dimmed">The busiest hours show up here after the extension's first sync.</Text>
+      </Section>
+    );
+  }
   const data = Array.from({ length: 24 }, (_, h) => {
     const count = week.hourly_topics.filter((t) => t.hour === h).reduce((n, t) => n + t.count, 0);
     return { hour: hourLabel(h), day: isLate(h) ? 0 : count, late: isLate(h) ? count : 0 };
@@ -101,7 +113,6 @@ export function Tools({ sites, ratings }: { sites: SiteAggregate[]; ratings: Too
   return (
     <Box id="tools" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" mb="md">
-        <Title order={3}>AI tools used this week</Title>
         <Text size="sm" c="dimmed">Ratings are hand-curated, never generated</Text>
       </Group>
       <Stack gap="lg" style={{ flex: 1 }}>
@@ -142,27 +153,29 @@ export function Tools({ sites, ratings }: { sites: SiteAggregate[]; ratings: Too
 
 // A short summary for the parent, beside the AI tools.
 export function Privacy() {
-  const block = (icon: ReactNode, title: string, items: string[]) => (
-    <div>
+  // Each list on its own tint (Mantine's light variant colors, which follow dark mode) so the two read apart.
+  const block = (color: string, icon: ReactNode, title: string, items: string[]) => (
+    <Paper p="md" radius="md" bg={`var(--mantine-color-${color}-light)`}>
       <Group gap={6} mb={4}>{icon}<Text fw={700} size="sm">{title}</Text></Group>
       <List size="sm" spacing={2}>{items.map((i) => <List.Item key={i}>{i}</List.Item>)}</List>
-    </div>
+    </Paper>
   );
   return (
     <Box id="privacy" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <Title order={3} mb="md">What you can and can't see</Title>
       <Card withBorder radius="lg" padding="lg" style={{ flex: 1 }}>
-        <Stack gap="md">
-          {block(<IconEye size={16} color="var(--mantine-color-teal-6)" />, "You see", [
+        {/* Side by side once the card itself is wide enough (container query), stacked otherwise. */}
+        <SimpleGrid type="container" cols={{ base: 1, "480px": 2 }} spacing="lg" verticalSpacing="md">
+          {block("teal", <IconEye size={16} color="var(--mantine-color-teal-6)" />, "You see", [
             "Topics and how often they came up",
             "When and how long, per tool, including voice",
             "Privacy pauses: the kind of info, never the info",
           ])}
-          {block(<IconEyeOff size={16} color="var(--mantine-color-red-6)" />, "You never see", [
+          {block("red", <IconEyeOff size={16} color="var(--mantine-color-red-6)" />, "You never see", [
             "Messages, quotes or audio",
             `Sensitive topics: ${EXCLUDED.join(", ").toLowerCase()}`,
           ])}
-        </Stack>
+        </SimpleGrid>
       </Card>
     </Box>
   );

@@ -43,12 +43,11 @@ async function authRequest(path: "login" | "signup") {
       $("auth-out").textContent = typeof body.detail === "string" ? body.detail : "Enter a valid email and a password of at least 8 characters";
       return;
     }
-    await store.set("auth", { token: body.token, email: body.email });
+    const msg: ToWorker = { type: "set-account", auth: { token: body.token, email: body.email } };
+    await chrome.runtime.sendMessage(msg);
     $<HTMLInputElement>("password").value = "";
     $("auth-out").textContent = "";
     await showAuth();
-    const msg: ToWorker = { type: "sync-now" };
-    void chrome.runtime.sendMessage(msg).catch(() => {});
   } catch (e) {
     $("auth-out").textContent = `API unreachable at ${apiUrl} (${String(e)})`;
   }
@@ -56,12 +55,10 @@ async function authRequest(path: "login" | "signup") {
 
 $("login").addEventListener("click", () => void authRequest("login"));
 $("signup").addEventListener("click", () => void authRequest("signup"));
+// Syncs this browser's data one last time, then deletes it here (service worker: setAccount).
 $("logout").addEventListener("click", async () => {
-  const [{ apiUrl }, auth] = await Promise.all([store.get("settings"), store.get("auth")]);
-  if (auth) {
-    await fetch(`${apiUrl.replace(/\/+$/, "")}/auth/logout`, { method: "POST", headers: { authorization: `Bearer ${auth.token}` } }).catch(() => {});
-  }
-  await store.set("auth", null);
+  const msg: ToWorker = { type: "set-account", auth: null };
+  await chrome.runtime.sendMessage(msg);
   await showAuth();
 });
 

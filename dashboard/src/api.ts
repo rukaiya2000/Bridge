@@ -29,11 +29,13 @@ export function loadSession(): Session | null {
 
 // The Bridge extension, if installed in this browser, listens for this and logs in too
 // (extension/src/content/dashboard.ts). The token stays on this page's origin.
-export const announceSession = (s: Session | null) =>
+export const announceSession = (s: Session) =>
   window.postMessage({ bridge: "dashboard-session", session: s }, window.location.origin);
 
 export function saveSession(s: Session | null) {
-  announceSession(s);
+  const leaving = loadSession();
+  if (s) announceSession(s);
+  else if (leaving) window.postMessage({ bridge: "dashboard-logout", email: leaving.email }, window.location.origin);
   try {
     if (s) localStorage.setItem(SESSION_KEY, JSON.stringify(s));
     else localStorage.removeItem(SESSION_KEY);

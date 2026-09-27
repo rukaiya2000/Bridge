@@ -12,6 +12,10 @@ export type ToWorker =
   | { type: "sync-now" }
   // dashboard page (content/dashboard.ts): someone logged in there, so log the extension in too
   | { type: "dashboard-session"; token: string; email: string }
+  // dashboard page: that account logged out there, so log the extension out of it too
+  | { type: "dashboard-logout"; email: string }
+  // options page: log in (auth) or out (null). The worker answers once it's done.
+  | { type: "set-account"; auth: { token: string; email: string } | null }
   // privacy guard paused a message or upload. Kinds of info only, never the values.
   | { type: "privacy-pause"; site: Site; what: "message" | "file"; findings: Finding[]; outcome: PauseOutcome }
   // safety gate RPC: may this message go to the chatbot? The worker answers with a SafetyVerdict
