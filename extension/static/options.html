@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Bridge options</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; max-width: 560px; margin: 24px auto; padding: 0 16px; color: #1f2933; }
+    label { display: block; margin: 10px 0 4px; }
+    input[type=text], input[type=password] { width: 100%; padding: 6px; box-sizing: border-box; }
+    pre { background: #f5f7fa; padding: 8px; overflow: auto; }
+    table { border-collapse: collapse; margin-top: 8px; }
+    td, th { border: 1px solid #e4e7eb; padding: 4px 10px; text-align: left; }
+    section { margin-bottom: 28px; }
+  </style>
+</head>
+<body>
+  <h1>Bridge</h1>
+  <section>
+    <h2>Account</h2>
+    <p>Log in with the same account as the parent dashboard. Each account only sees its own data.</p>
+    <div id="logged-out">
+      <label for="email">Email</label>
+      <input id="email" type="text" autocomplete="email" />
+      <label for="password">Password (at least 8 characters)</label>
+      <input id="password" type="password" autocomplete="current-password" />
+      <p><button id="login">Log in</button> <button id="signup">Create account</button> <span id="auth-out"></span></p>
+    </div>
+    <p id="logged-in" hidden>Logged in as <b id="who"></b> <button id="logout">Log out</button></p>
+  </section>
+  <section>
+    <h2>Settings</h2>
+    <p>Messages are labeled by Jev (typesafe/jev-1.13) on OpenRouter: <span id="jev-key"></span>. Crisis and abuse rules always run on-device.</p>
+    <label><input id="nudges" type="checkbox" /> Nudges on</label>
+    <label><input id="spoken" type="checkbox" /> Speak nudges in voice mode</label>
+    <label><input id="strict" type="checkbox" /> Strict privacy: personal info can't be sent at all (no "send anyway")</label>
+    <label><input id="safety" type="checkbox" /> Safety gate: Jev checks each message before it's sent and blocks dangerous ones (self-harm, abuse, meeting strangers, sexual content, violence, romance with the chatbot)</label>
+    <label for="threshold">Block when the danger score is at least (0 to 1)</label>
+    <input id="threshold" type="number" min="0.05" max="1" step="0.05" />
+    <label><input id="jev-debug" type="checkbox" /> Debug: print each safety check's Jev request and response in the API terminal (includes the message text, so dev only)</label>
+    <label for="api">Sync API URL</label>
+    <input id="api" type="text" />
+    <p class="note">This browser's device ID: <code id="device">…</code>. All devices with the same Child ID are added up on the dashboard.</p>
+    <label for="child">Child ID (the dashboard shows "demo" in your account)</label>
+    <input id="child" type="text" />
+    <button id="save">Save</button> <span id="saved"></span>
+    <p><button id="sync">Sync now</button> <span id="sync-out"></span></p>
+    <p><button id="test">Test labeling</button></p>
+    <pre id="test-out"></pre>
+  </section>
+  <section>
+    <h2>Demo replay</h2>
+    <select id="arc"></select> <button id="replay">Replay</button>
+    <table id="replay-out"></table>
+  </section>
+  <script src="options.js"></script>
+</body>
+</html>

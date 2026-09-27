@@ -12,6 +12,14 @@ wheels/
 # Secrets
 .env
 .env.*
+!.env.example
 
 # Node
 node_modules/
+!.env.example
+
+# Eval
+eval/data/labels_cache.jsonl
+
+# Generated voice clips (regenerate with npm run voice -w extension)
+extension/static/audio/*.mp3

@@ -112,13 +112,19 @@ Git: Person1 works on `p1/extension`, Person2 on `p2/core-eval`. Only `core/src/
 
 Everything still runs on a laptop: `docker compose up` starts MongoDB, the API and the dashboard.
 
-- [ ] Aggregator in the extension: applies topic exclusions and abuse masking **before** sync; sends only the synced-data list from `desc.md`
+- [x] Aggregator in the extension: applies topic exclusions and abuse masking **before** sync; sends only the synced-data list from `desc.md`
 - [ ] FastAPI `api/`: `POST /sync` for aggregates, and `GET` endpoints for the dashboard; MongoDB collections for profiles, hourly counts, parent settings, starter templates and tool ratings
 - [ ] Dashboard `dashboard/` (React): weekly insight card, time-of-day chart, trend versus last week (Mongo aggregation), conversation starter from vetted templates
 - [ ] Tool report card (hand-curated ratings seeded into Mongo) and time and spend view with paid-tier flag
 - [ ] Parent alert path (optional, no text, suppressed on abuse signals)
 - [ ] Eval: fix top 3 failures on the tuning split, run the held-out split once, freeze numbers
 - [ ] Abuse-masking test: a crisis + abuse week shows no crisis anywhere on the dashboard
+- [ ] Voice mode awareness and spoken nudges (`desc.md` feature 8), the main ElevenLabs integration:
+  - [ ] Contract change agreed and logged in `PHASE1.md` §9: `voice?: boolean` on `SessionEvent`, `voiceMinutes` and `lateNightVoiceSessions` on `DayBucket`
+  - [ ] Main-world script wraps `getUserMedia` on the four AI domains and emits voice start and end only; no audio is read or stored
+  - [ ] `recordSession` counts voice time; a voice term in `weights.json`, tuned on the tuning split only
+  - [ ] Build-time script turns the nudge variants and crisis handoff into MP3s with ElevenLabs TTS (`ELEVENLABS_API_KEY` in `.env`); MP3s bundled in the extension
+  - [ ] Offscreen document plays the clip when a nudge or crisis fires during a voice session; the text card or panel still shows; crisis audio works offline
 
 Exit: live chat on Gemini → nudge in page → parent card updates on `localhost` with no message text anywhere in Mongo.
 
@@ -126,7 +132,12 @@ Exit: live chat on Gemini → nudge in page → parent card updates on `localhos
 
 - [ ] Deploy API and dashboard to DigitalOcean App Platform; MongoDB Atlas instead of the local container
 - [ ] Register a GoDaddy Registry domain and point it at the dashboard
-- [ ] Stretch: ElevenLabs rehearsal agent + Gemini feedback (drop the track if it's cut)
+- [ ] Stretch: ElevenLabs rehearsal agent + Gemini feedback (the ElevenLabs track rests on voice mode; rehearsal is a bonus)
+  - **Agreed design (2026-09-26), built after the core is complete:** a multi-agent *rehearsal room*, not an outcome predictor.
+    - Agents (Google ADK on Gemini): **simulated teen** (persona from the week's topic label + level only, never the child's words), **coach** (scores open vs closed questions, listening vs lecturing, judgment-free wording; 1–2 tips quoting the parent), optional **auto-parent** for the on-stage "bad opener vs good opener" comparison.
+    - "Getting better" = the parent's practice score improving across tries, plus real week-over-week signals after the talk. Never a prediction about the real relationship.
+    - Guardrails: no crisis/self-harm/excluded-topic role-play; crisis weeks show "talk to a counselor" instead; labeled as a simulated teen; audio never stored; feedback saved only with consent.
+    - Entry point: "Practice this conversation" on the dashboard insight card. Voice via ElevenLabs only if time allows.
 - [ ] Second site adapter only if everything above is done
 - [ ] Confusion matrix and three-row comparison table from the held-out set
 - [ ] Slides: hook, demo, numbers, privacy, roadmap; one paragraph per sponsor track

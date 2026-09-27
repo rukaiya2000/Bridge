@@ -1,0 +1,107 @@
+{
+  "child_id": "demo",
+  "device_id": "sample",
+  "week_start": "2026-09-01",
+  "sites": [
+    {
+      "site": "gemini",
+      "level": "concerning",
+      "score": 10.6,
+      "active_minutes": 355,
+      "late_night_sessions": 5,
+      "voice_minutes": 40,
+      "nudges_shown": 2,
+      "privacy_pauses": 2,
+      "paid_tier": false
+    },
+    {
+      "site": "characterai",
+      "level": "watch",
+      "score": 4.5,
+      "active_minutes": 140,
+      "late_night_sessions": 2,
+      "voice_minutes": 0,
+      "nudges_shown": 1,
+      "privacy_pauses": 1,
+      "paid_tier": true
+    }
+  ],
+  "hourly_topics": [
+    {
+      "date": "2026-09-02",
+      "hour": 16,
+      "topic": "school",
+      "count": 2
+    },
+    {
+      "date": "2026-09-02",
+      "hour": 21,
+      "topic": "stress",
+      "count": 1
+    },
+    {
+      "date": "2026-09-03",
+      "hour": 23,
+      "topic": "loneliness",
+      "count": 2
+    },
+    {
+      "date": "2026-09-04",
+      "hour": 0,
+      "topic": "loneliness",
+      "count": 1
+    },
+    {
+      "date": "2026-09-05",
+      "hour": 23,
+      "topic": "friends",
+      "count": 1
+    },
+    {
+      "date": "2026-09-05",
+      "hour": 23,
+      "topic": "loneliness",
+      "count": 1
+    },
+    {
+      "date": "2026-09-06",
+      "hour": 0,
+      "topic": "sadness",
+      "count": 1
+    },
+    {
+      "date": "2026-09-06",
+      "hour": 20,
+      "topic": "loneliness",
+      "count": 1
+    },
+    {
+      "date": "2026-09-07",
+      "hour": 23,
+      "topic": "friends",
+      "count": 1
+    },
+    {
+      "date": "2026-09-07",
+      "hour": 23,
+      "topic": "loneliness",
+      "count": 1
+    },
+    {
+      "date": "2026-09-07",
+      "hour": 17,
+      "topic": "school",
+      "count": 1
+    }
+  ],
+  "voice_sessions": [
+    { "date": "2026-09-04", "hour": 0, "site": "gemini", "minutes": 12 },
+    { "date": "2026-09-06", "hour": 0, "site": "gemini", "minutes": 20 },
+    { "date": "2026-09-07", "hour": 23, "site": "gemini", "minutes": 8 }
+  ],
+  "privacy_flags": [
+    { "date": "2026-09-03", "hour": 23, "site": "gemini", "what": "message", "findings": ["address"], "sent": false },
+    { "date": "2026-09-05", "hour": 23, "site": "gemini", "what": "message", "findings": ["phone"], "sent": true },
+    { "date": "2026-09-06", "hour": 20, "site": "characterai", "what": "file", "findings": ["id_document"], "sent": false }
+  ]
+}

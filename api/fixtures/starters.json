@@ -1,0 +1,82 @@
+[
+  {
+    "topic": "loneliness",
+    "text": "I've been feeling stretched lately. How are things with your friends?"
+  },
+  {
+    "topic": "sadness",
+    "text": "You've seemed a bit low lately. Want to go for a walk and talk about anything?"
+  },
+  {
+    "topic": "stress",
+    "text": "This week looked busy. What's taking up most of your headspace right now?"
+  },
+  {
+    "topic": "anxiety",
+    "text": "Is anything coming up that you're dreading? I'm happy to just listen."
+  },
+  {
+    "topic": "friends",
+    "text": "Who have you been hanging out with lately? I'd love to hear about them."
+  },
+  {
+    "topic": "school",
+    "text": "What's the most interesting thing you're working on at school?"
+  },
+  {
+    "topic": "family",
+    "text": "How are things feeling at home for you lately? Anything you'd change?"
+  },
+  {
+    "topic": "self_worth",
+    "text": "What's something you did recently that you're proud of?"
+  },
+  {
+    "topic": "anger",
+    "text": "Something seemed to really get to you this week. Want to tell me what happened?"
+  },
+  {
+    "topic": "hopelessness",
+    "text": "It sounds like things have felt heavy for a while. I'm on your side. Can we figure out one small thing together?"
+  },
+  {
+    "topic": "emptiness",
+    "text": "Some days just feel flat. How have you been feeling lately, honestly? No wrong answers."
+  },
+  {
+    "topic": "rejection",
+    "text": "Being left out really stings. Has anything like that happened lately?"
+  },
+  {
+    "topic": "guilt_shame",
+    "text": "Everyone messes up sometimes, me included. Is anything weighing on you that you'd like to talk through?"
+  },
+  {
+    "topic": "overwhelm",
+    "text": "It seems like a lot is on your plate. Want to list it together and see what we can take off?"
+  },
+  {
+    "topic": "fear",
+    "text": "Is anything or anyone making you feel unsafe or scared? You can always tell me."
+  },
+  {
+    "topic": "grief",
+    "text": "I've been thinking about what we've lost. How are you holding up with it?"
+  },
+  {
+    "topic": "jealousy",
+    "text": "It's easy to compare yourself to others online. What's something you like about yourself right now?"
+  },
+  {
+    "topic": "frustration",
+    "text": "Sounds like things keep going sideways. What's been the most annoying part?"
+  },
+  {
+    "topic": "happiness",
+    "text": "You seemed in a good mood this week. What's been going well?"
+  },
+  {
+    "topic": "default",
+    "text": "What's been the best and hardest part of your week?"
+  }
+]

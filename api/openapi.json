@@ -1,0 +1,1084 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bridge sync API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "summary": "Signup",
+        "operationId": "signup_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Logout Auth Logout Post"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/session": {
+      "post": {
+        "summary": "Extra Session",
+        "description": "The extension picks up the dashboard's login in the same browser: it trades the dashboard's\ntoken for its own (extension/src/content/dashboard.ts).",
+        "operationId": "extra_session_auth_session_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Me",
+        "operationId": "me_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/sync": {
+      "post": {
+        "summary": "Sync",
+        "operationId": "sync_sync_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Sync Sync Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/children/{child_id}/weeks": {
+      "get": {
+        "summary": "Weeks",
+        "description": "Week starts with data, newest first.",
+        "operationId": "weeks_children__child_id__weeks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Weeks Children  Child Id  Weeks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{child_id}/weeks/{week_start}": {
+      "get": {
+        "summary": "Week",
+        "operationId": "week_children__child_id__weeks__week_start__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Id"
+            }
+          },
+          {
+            "name": "week_start",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Week Start"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeekSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/children/{child_id}/weeks/{week_start}/topics": {
+      "get": {
+        "summary": "Topics",
+        "description": "Per-topic counts this week vs last week, most frequent first.",
+        "operationId": "topics_children__child_id__weeks__week_start__topics_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "child_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Id"
+            }
+          },
+          {
+            "name": "week_start",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Week Start"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TopicTrend"
+                  },
+                  "title": "Response Topics Children  Child Id  Weeks  Week Start  Topics Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/ratings": {
+      "get": {
+        "summary": "Ratings",
+        "operationId": "ratings_tools_ratings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ToolRating"
+                  },
+                  "type": "array",
+                  "title": "Response Ratings Tools Ratings Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/starters": {
+      "get": {
+        "summary": "List Starters",
+        "operationId": "list_starters_starters_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Starter"
+                  },
+                  "type": "array",
+                  "title": "Response List Starters Starters Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Credentials": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "Credentials"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HourlyTopicCount": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "loneliness",
+              "sadness",
+              "stress",
+              "anxiety",
+              "anger",
+              "self_worth",
+              "hopelessness",
+              "emptiness",
+              "rejection",
+              "guilt_shame",
+              "overwhelm",
+              "fear",
+              "grief",
+              "jealousy",
+              "frustration",
+              "happiness",
+              "school",
+              "friends",
+              "family",
+              "romance",
+              "body_image",
+              "boredom",
+              "other"
+            ],
+            "title": "Topic"
+          },
+          "count": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "hour",
+          "topic",
+          "count"
+        ],
+        "title": "HourlyTopicCount"
+      },
+      "LoginResult": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "email"
+        ],
+        "title": "LoginResult"
+      },
+      "Me": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "Me"
+      },
+      "PrivacyFlag": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "what": {
+            "type": "string",
+            "enum": [
+              "message",
+              "file"
+            ],
+            "title": "What"
+          },
+          "findings": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "phone",
+                "email",
+                "ssn",
+                "card",
+                "bank",
+                "address",
+                "password",
+                "birthday",
+                "student_id",
+                "id_document",
+                "unsafe"
+              ]
+            },
+            "type": "array",
+            "maxItems": 11,
+            "minItems": 1,
+            "title": "Findings"
+          },
+          "sent": {
+            "type": "boolean",
+            "title": "Sent"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "hour",
+          "site",
+          "what",
+          "findings",
+          "sent"
+        ],
+        "title": "PrivacyFlag",
+        "description": "Personal info caught before it was sent. The kinds of info only, never the values."
+      },
+      "SiteAggregate": {
+        "properties": {
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "watch",
+              "concerning",
+              "crisis"
+            ],
+            "title": "Level"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "active_minutes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Active Minutes"
+          },
+          "late_night_sessions": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Late Night Sessions"
+          },
+          "voice_minutes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Voice Minutes",
+            "default": 0
+          },
+          "nudges_shown": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Nudges Shown"
+          },
+          "privacy_pauses": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Privacy Pauses",
+            "default": 0
+          },
+          "paid_tier": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid Tier"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site",
+          "level",
+          "score",
+          "active_minutes",
+          "late_night_sessions",
+          "nudges_shown"
+        ],
+        "title": "SiteAggregate"
+      },
+      "Starter": {
+        "properties": {
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "loneliness",
+                  "sadness",
+                  "stress",
+                  "anxiety",
+                  "anger",
+                  "self_worth",
+                  "hopelessness",
+                  "emptiness",
+                  "rejection",
+                  "guilt_shame",
+                  "overwhelm",
+                  "fear",
+                  "grief",
+                  "jealousy",
+                  "frustration",
+                  "happiness",
+                  "school",
+                  "friends",
+                  "family",
+                  "romance",
+                  "body_image",
+                  "boredom",
+                  "other"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "default"
+              }
+            ],
+            "title": "Topic"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "text"
+        ],
+        "title": "Starter",
+        "description": "Vetted conversation starter (desc.md feature 2). `topic` is a Topic or \"default\"."
+      },
+      "SyncPayload": {
+        "properties": {
+          "child_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Child Id"
+          },
+          "device_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Device Id",
+            "default": "legacy"
+          },
+          "week_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Week Start"
+          },
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/SiteAggregate"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Sites"
+          },
+          "hourly_topics": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyTopicCount"
+            },
+            "type": "array",
+            "maxItems": 3864,
+            "title": "Hourly Topics"
+          },
+          "voice_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceSession"
+            },
+            "type": "array",
+            "maxItems": 672,
+            "title": "Voice Sessions"
+          },
+          "privacy_flags": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyFlag"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Privacy Flags"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "child_id",
+          "week_start",
+          "sites",
+          "hourly_topics"
+        ],
+        "title": "SyncPayload",
+        "description": "One device's week. Several devices (browsers) can report for the same child_id."
+      },
+      "ToolRating": {
+        "properties": {
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "general_assistant",
+              "companion"
+            ],
+            "title": "Type"
+          },
+          "min_age": {
+            "type": "integer",
+            "title": "Min Age"
+          },
+          "teen_safety_settings": {
+            "type": "boolean",
+            "title": "Teen Safety Settings"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site",
+          "name",
+          "type",
+          "min_age",
+          "teen_safety_settings",
+          "summary",
+          "recommendation"
+        ],
+        "title": "ToolRating",
+        "description": "Hand-curated rating for one AI site (desc.md feature 6). Stored in MongoDB, never generated."
+      },
+      "TopicTrend": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "loneliness",
+              "sadness",
+              "stress",
+              "anxiety",
+              "anger",
+              "self_worth",
+              "hopelessness",
+              "emptiness",
+              "rejection",
+              "guilt_shame",
+              "overwhelm",
+              "fear",
+              "grief",
+              "jealousy",
+              "frustration",
+              "happiness",
+              "school",
+              "friends",
+              "family",
+              "romance",
+              "body_image",
+              "boredom",
+              "other"
+            ],
+            "title": "Topic"
+          },
+          "this_week": {
+            "type": "integer",
+            "title": "This Week"
+          },
+          "last_week": {
+            "type": "integer",
+            "title": "Last Week"
+          },
+          "late_night": {
+            "type": "integer",
+            "title": "Late Night"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topic",
+          "this_week",
+          "last_week",
+          "late_night"
+        ],
+        "title": "TopicTrend",
+        "description": "Per-topic counts for one week vs the week before (computed by a MongoDB aggregation)."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VoiceSession": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hour"
+          },
+          "site": {
+            "type": "string",
+            "enum": [
+              "chatgpt",
+              "claude",
+              "characterai",
+              "gemini"
+            ],
+            "title": "Site"
+          },
+          "minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 0.0,
+            "title": "Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "hour",
+          "site",
+          "minutes"
+        ],
+        "title": "VoiceSession",
+        "description": "One microphone use on an AI site (feature 8). When and how long only: audio is never read."
+      },
+      "WeekSummary": {
+        "properties": {
+          "child_id": {
+            "type": "string",
+            "title": "Child Id"
+          },
+          "week_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Week Start"
+          },
+          "devices": {
+            "type": "integer",
+            "title": "Devices"
+          },
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/SiteAggregate"
+            },
+            "type": "array",
+            "title": "Sites"
+          },
+          "hourly_topics": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyTopicCount"
+            },
+            "type": "array",
+            "title": "Hourly Topics"
+          },
+          "voice_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/VoiceSession"
+            },
+            "type": "array",
+            "title": "Voice Sessions"
+          },
+          "privacy_flags": {
+            "items": {
+              "$ref": "#/components/schemas/PrivacyFlag"
+            },
+            "type": "array",
+            "title": "Privacy Flags"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "child_id",
+          "week_start",
+          "devices",
+          "sites",
+          "hourly_topics",
+          "voice_sessions",
+          "privacy_flags"
+        ],
+        "title": "WeekSummary",
+        "description": "A child's week as the parent sees it: every device added up (api/db.py load_week)."
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

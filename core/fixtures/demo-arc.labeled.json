@@ -1,0 +1,278 @@
+{
+  "id": "arc_demo",
+  "site": "gemini",
+  "sessions": [
+    {
+      "start": 1788278400000,
+      "end": 1788279900000,
+      "turns": [
+        {
+          "ts": 1788278700000,
+          "labels": {
+            "topics": [
+              "school"
+            ],
+            "dependency": false,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788279000000,
+          "labels": {
+            "topics": [
+              "school"
+            ],
+            "dependency": false,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    },
+    {
+      "start": 1788382800000,
+      "end": 1788384600000,
+      "turns": [
+        {
+          "ts": 1788383100000,
+          "labels": {
+            "topics": [
+              "school"
+            ],
+            "dependency": false,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788383400000,
+          "labels": {
+            "topics": [
+              "stress",
+              "school"
+            ],
+            "dependency": false,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    },
+    {
+      "start": 1788478200000,
+      "end": 1788480600000,
+      "turns": [
+        {
+          "ts": 1788478500000,
+          "labels": {
+            "topics": [
+              "loneliness",
+              "friends"
+            ],
+            "dependency": false,
+            "isolation": true,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788478800000,
+          "labels": {
+            "topics": [
+              "loneliness"
+            ],
+            "dependency": false,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    },
+    {
+      "start": 1788480900000,
+      "end": 1788484200000,
+      "turns": [
+        {
+          "ts": 1788481200000,
+          "labels": {
+            "topics": [
+              "loneliness"
+            ],
+            "dependency": true,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788481500000,
+          "labels": {
+            "topics": [],
+            "dependency": false,
+            "isolation": false,
+            "botHook": true,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788481800000,
+          "labels": {
+            "topics": [],
+            "dependency": true,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    },
+    {
+      "start": 1788651900000,
+      "end": 1788655500000,
+      "turns": [
+        {
+          "ts": 1788652200000,
+          "labels": {
+            "topics": [
+              "friends"
+            ],
+            "dependency": false,
+            "isolation": true,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788652500000,
+          "labels": {
+            "topics": [],
+            "dependency": true,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    },
+    {
+      "start": 1788654600000,
+      "end": 1788660300000,
+      "turns": [
+        {
+          "ts": 1788654900000,
+          "labels": {
+            "topics": [
+              "sadness"
+            ],
+            "dependency": false,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788655200000,
+          "labels": {
+            "topics": [],
+            "dependency": false,
+            "isolation": false,
+            "botHook": true,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788655500000,
+          "labels": {
+            "topics": [],
+            "dependency": true,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    },
+    {
+      "start": 1788825000000,
+      "end": 1788828000000,
+      "turns": [
+        {
+          "ts": 1788825300000,
+          "labels": {
+            "topics": [
+              "friends"
+            ],
+            "dependency": false,
+            "isolation": true,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        },
+        {
+          "ts": 1788825600000,
+          "labels": {
+            "topics": [],
+            "dependency": true,
+            "isolation": false,
+            "botHook": false,
+            "crisis": false,
+            "abuseAtHome": false,
+            "excludedTopics": [],
+            "source": "rules+gemini"
+          }
+        }
+      ]
+    }
+  ]
+}

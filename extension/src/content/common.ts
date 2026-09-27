@@ -1,0 +1,34 @@
+// Shared by both content scripts: heartbeat, voice relay, and nudge UI.
+import type { Site } from "../../../core/src/types";
+import type { MicSignal, ToContent, ToWorker } from "../messages";
+import { markInteraction, siteFromHost, startHeartbeat } from "./heartbeat";
+import { toWorker } from "./send";
+import { mountShadow } from "../ui/shadow";
+import { showNudge } from "../ui/nudge";
+
+export function startCommon(): Site | null {
+  const site = siteFromHost();
+  if (!site) return null;
+  const root = mountShadow();
+
+  // Feature 8: the MAIN-world mic hook posts timing signals only. Never audio.
+  let voiceActive = false;
+  addEventListener("message", (e: MessageEvent<MicSignal>) => {
+    if (e.source !== window || (e.data?.bridge !== "voice-start" && e.data?.bridge !== "voice-end")) return;
+    voiceActive = e.data.bridge === "voice-start";
+    markInteraction();
+    // Use the hook's own time: "voice-end" is posted a few seconds after listening stopped (in case
+    // dictation resumes), so the time it arrives here would make every session look longer.
+    const now = Date.now();
+    const ts = Number.isFinite(e.data.ts) && e.data.ts <= now && now - e.data.ts < 60_000 ? e.data.ts : now;
+    const msg: ToWorker = { type: "voice", site, active: voiceActive, ts };
+    toWorker(msg);
+  });
+
+  startHeartbeat(site, () => voiceActive);
+
+  chrome.runtime.onMessage.addListener((msg: ToContent) => {
+    if (msg.type === "show-nudge") showNudge(root, msg.variant);
+  });
+  return site;
+}

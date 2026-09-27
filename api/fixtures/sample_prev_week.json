@@ -1,0 +1,56 @@
+{
+  "child_id": "demo",
+  "device_id": "sample",
+  "week_start": "2026-08-25",
+  "sites": [
+    {
+      "site": "gemini",
+      "level": "watch",
+      "score": 3.5,
+      "active_minutes": 190,
+      "late_night_sessions": 1,
+      "voice_minutes": 10,
+      "nudges_shown": 1,
+      "privacy_pauses": 0,
+      "paid_tier": false
+    }
+  ],
+  "hourly_topics": [
+    {
+      "date": "2026-08-25",
+      "hour": 16,
+      "topic": "school",
+      "count": 2
+    },
+    {
+      "date": "2026-08-26",
+      "hour": 17,
+      "topic": "school",
+      "count": 2
+    },
+    {
+      "date": "2026-08-27",
+      "hour": 21,
+      "topic": "stress",
+      "count": 2
+    },
+    {
+      "date": "2026-08-28",
+      "hour": 22,
+      "topic": "loneliness",
+      "count": 1
+    },
+    {
+      "date": "2026-08-30",
+      "hour": 23,
+      "topic": "loneliness",
+      "count": 1
+    },
+    {
+      "date": "2026-08-29",
+      "hour": 19,
+      "topic": "friends",
+      "count": 1
+    }
+  ]
+}
