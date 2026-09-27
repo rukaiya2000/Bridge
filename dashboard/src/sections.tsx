@@ -1,12 +1,12 @@
 // Dashboard sections. Layout, cards and charts come from Mantine; this file only arranges our data.
 import type { ReactNode } from "react";
 import {
-  Avatar, Badge, Box, Card, Group, List, Paper, SimpleGrid, Text, ThemeIcon, Title,
+  Avatar, Badge, Box, Card, Group, List, Paper, SimpleGrid, Stack, Text, ThemeIcon, Title,
 } from "@mantine/core";
 import { BarChart } from "@mantine/charts";
 import {
   IconArrowDownRight, IconArrowUpRight, IconBell, IconClock, IconEye, IconEyeOff,
-  IconLock, IconMicrophone, IconMoonStars, IconShieldCheck, IconShieldLock,
+  IconLock, IconMicrophone, IconMoonStars,
 } from "@tabler/icons-react";
 import type { SiteAggregate, ToolRating, TopicTrend, Week } from "./api";
 import { hourLabel, hours, isLate, LEVEL_COLOR, sum, topicLabel } from "./format";
@@ -99,19 +99,19 @@ export function Tools({ sites, ratings }: { sites: SiteAggregate[]; ratings: Too
   const bySite = new Map(ratings.map((r) => [r.site, r]));
   const sorted = [...sites].sort((a, b) => b.active_minutes - a.active_minutes);
   return (
-    <Box id="tools">
+    <Box id="tools" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <Group justify="space-between" mb="md">
         <Title order={3}>AI tools used this week</Title>
         <Text size="sm" c="dimmed">Ratings are hand-curated, never generated</Text>
       </Group>
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+      <Stack gap="lg" style={{ flex: 1 }}>
         {sorted.map((s) => {
           const r = bySite.get(s.site);
           const stats = [
             ["Time", hours(s.active_minutes)], ["Late nights", String(s.late_night_sessions)], ["Voice", hours(s.voice_minutes)],
           ];
           return (
-            <Card key={s.site} withBorder radius="lg" padding="lg">
+            <Card key={s.site} withBorder radius="lg" padding="lg" style={{ flex: sorted.length === 1 ? 1 : undefined }}>
               <Group justify="space-between" wrap="nowrap">
                 <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
                   <Avatar color={SITE_COLOR[s.site] ?? "gray"} radius="md" size={44}>{(r?.name ?? s.site).slice(0, 2)}</Avatar>
@@ -135,51 +135,35 @@ export function Tools({ sites, ratings }: { sites: SiteAggregate[]; ratings: Too
             </Card>
           );
         })}
-      </SimpleGrid>
+      </Stack>
     </Box>
   );
 }
 
+// A short summary for the parent, beside the AI tools.
 export function Privacy() {
+  const block = (icon: ReactNode, title: string, items: string[]) => (
+    <div>
+      <Group gap={6} mb={4}>{icon}<Text fw={700} size="sm">{title}</Text></Group>
+      <List size="sm" spacing={2}>{items.map((i) => <List.Item key={i}>{i}</List.Item>)}</List>
+    </div>
+  );
   return (
-    <Card id="privacy" withBorder radius="lg" padding="xl">
-      <Group gap="sm" mb="lg">
-        <ThemeIcon size={40} radius="md" variant="light" color="teal"><IconShieldLock size={22} /></ThemeIcon>
-        <div>
-          <Title order={3}>What you can and can't see</Title>
-          <Text size="sm" c="dimmed">Bridge shares topics, not words. Your teen can see that Bridge is on.</Text>
-        </div>
-      </Group>
-      <SimpleGrid cols={{ base: 1, md: 3 }} spacing="xl">
-        <div>
-          <Group gap={6} mb="xs"><IconEye size={18} color="var(--mantine-color-teal-6)" /><Text fw={700}>You see</Text></Group>
-          <List size="sm" spacing={4}>
-            <List.Item>Topics and how often they came up</List.Item>
-            <List.Item>Time of day and time per tool</List.Item>
-            <List.Item>An overall level and a conversation starter</List.Item>
-            <List.Item>When the microphone was used, and for how long</List.Item>
-            <List.Item>When personal info was paused: the kind, and whether it was held back, sent with the details hidden, or sent anyway</List.Item>
-          </List>
-        </div>
-        <div>
-          <Group gap={6} mb="xs"><IconEyeOff size={18} color="var(--mantine-color-red-6)" /><Text fw={700}>You never see</Text></Group>
-          <List size="sm" spacing={4}>
-            <List.Item>Your teen's messages or any quotes</List.Item>
-            <List.Item>Any audio: Bridge never records the microphone</List.Item>
-            <List.Item>The personal info itself (the number, address, ...)</List.Item>
-            {EXCLUDED.map((t) => <List.Item key={t}>{t}</List.Item>)}
-          </List>
-        </div>
-        <div>
-          <Group gap={6} mb="xs"><IconShieldCheck size={18} color="var(--mantine-color-indigo-6)" /><Text fw={700}>How it's protected</Text></Group>
-          <List size="sm" spacing={4}>
-            <List.Item>Messages are never stored or sent to Bridge's servers; only labels are kept</List.Item>
-            <List.Item>Only counts are synced, then deleted after 8 weeks</List.Item>
-            <List.Item>If there are signs of abuse at home, alerts are held back</List.Item>
-            <List.Item>Phone numbers, addresses, IDs and passwords are caught before they're sent to a chatbot. Your teen can edit the message or send it with those details replaced. You see the kind and when, never the value</List.Item>
-          </List>
-        </div>
-      </SimpleGrid>
-    </Card>
+    <Box id="privacy" h="100%" style={{ display: "flex", flexDirection: "column" }}>
+      <Title order={3} mb="md">What you can and can't see</Title>
+      <Card withBorder radius="lg" padding="lg" style={{ flex: 1 }}>
+        <Stack gap="md">
+          {block(<IconEye size={16} color="var(--mantine-color-teal-6)" />, "You see", [
+            "Topics and how often they came up",
+            "When and how long, per tool, including voice",
+            "Privacy pauses: the kind of info, never the info",
+          ])}
+          {block(<IconEyeOff size={16} color="var(--mantine-color-red-6)" />, "You never see", [
+            "Messages, quotes or audio",
+            `Sensitive topics: ${EXCLUDED.join(", ").toLowerCase()}`,
+          ])}
+        </Stack>
+      </Card>
+    </Box>
   );
 }

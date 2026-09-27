@@ -19,7 +19,11 @@ export function startCommon(): Site | null {
     if (e.source !== window || (e.data?.bridge !== "voice-start" && e.data?.bridge !== "voice-end")) return;
     voiceActive = e.data.bridge === "voice-start";
     markInteraction();
-    const msg: ToWorker = { type: "voice", site, active: voiceActive, ts: Date.now() };
+    // Use the hook's own time: "voice-end" is posted a few seconds after listening stopped (in case
+    // dictation resumes), so the time it arrives here would make every session look longer.
+    const now = Date.now();
+    const ts = Number.isFinite(e.data.ts) && e.data.ts <= now && now - e.data.ts < 60_000 ? e.data.ts : now;
+    const msg: ToWorker = { type: "voice", site, active: voiceActive, ts };
     toWorker(msg);
   });
 

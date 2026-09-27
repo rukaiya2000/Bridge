@@ -84,7 +84,7 @@ export function buildPayload(input: AggregateInput): SyncPayload {
       score,
       active_minutes: Math.round(p.days.reduce((n, d) => n + d.activeMinutes, 0)), // tracked in fractions of a minute
       late_night_sessions: p.days.reduce((n, d) => n + d.lateNightSessions, 0),
-      voice_minutes: sumDays(input.voiceMinutes, p.site),
+      voice_minutes: Math.round(sumDays(input.voiceMinutes, p.site)), // stored as exact fractions
       nudges_shown: sumDays(input.nudges, p.site),
       privacy_pauses: privacy_flags.filter((f) => f.site === p.site).length,
       paid_tier: null, // not detected yet

@@ -60,8 +60,10 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
           <Grid.Col span={{ base: 12, lg: 6 }}><TopicsChart topics={topics.data!} /></Grid.Col>
           <Grid.Col span={{ base: 12, lg: 6 }}><HoursChart week={week.data!} /></Grid.Col>
         </Grid>
-        <Tools sites={week.data!.sites} ratings={ratings.data!} />
-        <Privacy />
+        <Grid gutter="lg">
+          <Grid.Col span={{ base: 12, lg: 7 }}><Tools sites={week.data!.sites} ratings={ratings.data!} /></Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 5 }}><Privacy /></Grid.Col>
+        </Grid>
       </Stack>
     );
   }

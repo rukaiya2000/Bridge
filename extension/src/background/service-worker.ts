@@ -272,9 +272,13 @@ async function onVoice(site: Site, active: boolean, ts: number) {
     if (!cur) voice.current[site] = { start: ts };
   } else if (cur) {
     delete voice.current[site];
-    const minutes = Math.round((ts - cur.start) / 60000);
+    // Kept exact (fractions of a minute) and rounded only in the weekly total, so a few seconds of
+    // dictation don't each count as a minute.
+    const exact = Math.max(0, ts - cur.start) / 60000;
+    const minutes = Math.round(exact);
+    console.info(`[Bridge] voice on ${site}: ${Math.round(exact * 60)} s`);
     const day = (voice.minutesByDay[dayKey(cur.start)] ??= {});
-    day[site] = (day[site] ?? 0) + minutes;
+    day[site] = (day[site] ?? 0) + exact;
     // Each mic use is logged for the parent's activity list, even one shorter than a minute.
     const log = pruneDays(await store.get("voiceLog"), ts);
     (log[dayKey(cur.start)] ??= []).push({ hour: new Date(cur.start).getHours(), site, minutes });

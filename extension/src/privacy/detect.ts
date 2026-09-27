@@ -45,7 +45,9 @@ const PHRASES: [Finding, RegExp][] = [
   ["address", new RegExp(`\\b\\d{2,6}\\s+(?:${NOT_A_STREET_WORD}[a-z0-9]+\\s+){1,4}(?:${STREET_TYPES})\\b${UNIT}${CITY_STATE_ZIP}`, "i")],
   ["address", /\bp\.?\s*o\.?\s*box\s+\d+/i],
   ["address", /\b(zip|zip code|postal code)\s*(is|:)?\s*\d{5}(-\d{4})?\b/i],
-  ["ssn", /\b(ssn|social security|social)\s*(number|no\.?|#)?\s*(is|:|#)?\s*\d{3}\s?\d{2}\s?\d{4}\b/i], // no dashes; redactpii handles dashed
+  // After "ssn" / "social security", any 4-9 digits count as (part of) an SSN, so "last 4 of my ssn is 1234"
+  // or a short number isn't mistaken for a phone number. Full dashed SSNs without a keyword: redactpii.
+  ["ssn", /\b(ssn|social security)\s*(number|no\.?|#)?\s*(is|:|#)?\s*\d(?:[\s-]?\d){3,8}\b/i],
   // Security code: the usual names (CVV, CVC, CSC, CID on Amex, "sec code") or "the digits on the back",
   // followed by 3-4 digits, also spelled out ("one two three").
   ["card", new RegExp(`\\b(?:(?:cvv|cvc|cvn|cav)2?|csc|cid|sec(?:urity)?\\s*code|card\\s+verification(?:\\s+(?:code|value|number))?|(?:code|digits|numbers?)\\s+on\\s+the\\s+back(?:\\s+of\\s+(?:the|my)\\s+card)?)\\s*(?:is|are|:|#|=)?\\s*${CVV_DIGITS}`, "i")],
@@ -90,10 +92,16 @@ const normalize = (text: string) =>
 // Fast enough (well under a millisecond) to run synchronously on every send.
 export function findInText(text: string): Finding[] {
   if (!text.trim()) return [];
-  text = normalize(text);
-  const redacted = redactor.redact(text);
-  const found: Finding[] = PLACEHOLDERS.filter(([p]) => redacted.includes(p)).map(([, f]) => f);
-  for (const [f, re] of PHRASES) if (re.test(text)) found.push(f);
+  // Keyword rules go first and take their digits out, so "ssn 1234567" is an SSN, not also a phone number.
+  let rest = normalize(text);
+  const found: Finding[] = [];
+  for (const [f, re] of PHRASES) {
+    if (!re.test(rest)) continue;
+    found.push(f);
+    rest = rest.replace(new RegExp(re.source, "gi"), " ");
+  }
+  const redacted = redactor.redact(rest);
+  found.push(...PLACEHOLDERS.filter(([p]) => redacted.includes(p)).map(([, f]) => f));
   return unique(found);
 }
 
@@ -102,9 +110,10 @@ export function findInText(text: string): Finding[] {
 // Copy of `text` with personal details replaced by placeholders ("my number is PHONE_NUMBER"). Used
 // before a message is sent anywhere for labeling, so Bridge itself never forwards those details.
 export function redactPersonal(text: string): string {
-  let out = redactor.redact(normalize(text));
+  // Same order as findInText: keyword rules first, so their digits get the right label.
+  let out = normalize(text);
   for (const [f, re] of PHRASES) out = out.replace(new RegExp(re.source, "gi"), f.toUpperCase());
-  return out;
+  return redactor.redact(out);
 }
 
 // What replaces each kind of detail when the teen chooses "Send without these details".

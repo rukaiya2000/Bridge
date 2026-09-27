@@ -15,6 +15,16 @@ const withTurns = (...turns: [Parameters<typeof labels>[0], number][]): Profile 
   turns.reduce((p, [l, ts]) => core.updateProfile(p, labels(l), ts), core.emptyProfile("gemini"));
 
 describe("buildPayload", () => {
+  it("adds voice time exactly and rounds only the weekly total", () => {
+    const secs = (n: number) => n / 60;
+    const few = buildPayload(input({ gemini: withTurns([{ topics: ["school"] }, NOW]) },
+      { voiceMinutes: { "2026-09-01": { gemini: secs(3) + secs(3) + secs(3) } } }));
+    expect(few.sites[0].voice_minutes).toBe(0); // three 3-second uses are not three minutes
+    const more = buildPayload(input({ gemini: withTurns([{ topics: ["school"] }, NOW]) },
+      { voiceMinutes: { "2026-09-01": { gemini: secs(40) }, "2026-09-02": { gemini: secs(50) } } }));
+    expect(more.sites[0].voice_minutes).toBe(2); // 90 s
+  });
+
   it("uses the Monday of the current local week", () => {
     expect(weekStartKey(NOW)).toBe("2026-08-31");
     expect(buildPayload(input({ gemini: withTurns([{ topics: ["school"] }, NOW]) })).week_start).toBe("2026-08-31");

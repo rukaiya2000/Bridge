@@ -15,13 +15,13 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   return e;
 }
 
-// One feeling: name and count, and a bar filled relative to today's most frequent feeling.
-function meter(t: Topic, count: number, max: number) {
+// One feeling: name and count, and one segment per mention (all five lit at 5 or more).
+function meter(t: Topic, count: number) {
   const row = el("div", `row ${topicGroup(t)}`);
   const top = el("div", "top");
   top.append(el("span", undefined, TOPIC_INFO[t].label), el("span", "n", `×${count}`));
   const bar = el("div", "bar");
-  const on = Math.max(1, Math.round((count / max) * SEGMENTS));
+  const on = Math.min(count, SEGMENTS);
   for (let i = 0; i < SEGMENTS; i++) bar.append(el("i", i < on ? "on" : undefined));
   row.setAttribute("aria-label", `${TOPIC_INFO[t].label}: ${count} today`);
   row.append(top, bar);
@@ -37,9 +37,8 @@ async function render() {
     for (const [t, n] of Object.entries(day?.topicCounts ?? {}) as [Topic, number][]) counts.set(t, (counts.get(t) ?? 0) + n);
   }
   const sorted = [...counts].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
-  const max = sorted[0]?.[1] ?? 1;
   const box = $("feelings");
-  box.replaceChildren(...sorted.map(([t, n]) => meter(t, n, max)));
+  box.replaceChildren(...sorted.map(([t, n]) => meter(t, n)));
   if (!sorted.length) box.append(el("div", "empty", "Nothing picked up yet today."));
 }
 

@@ -160,3 +160,16 @@ describe("hideDetails", () => {
     expect(hideDetails("the answer (in my notes) is 42")).toBe("the answer (in my notes) is 42");
   });
 });
+
+describe("numbers after 'ssn'", () => {
+  it("are an SSN, not a phone number, even when short", () => {
+    expect(findInText("here is my ssn 1234567, it is my ssn")).toEqual(["ssn"]);
+    expect(findInText("the last 4 of my social security number is 1234")).toEqual(["ssn"]);
+    expect(hideDetails("here is my ssn 1234567, it is my ssn")).toBe("here is my [SSN removed], it is my ssn");
+  });
+
+  it("leave plain numbers and the word 'social' alone", () => {
+    expect(findInText("call me at 555 1234")).toEqual(["phone"]);
+    expect(findInText("the social 2024 event was fun")).toEqual([]);
+  });
+});
