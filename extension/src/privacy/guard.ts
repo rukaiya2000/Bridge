@@ -1,15 +1,18 @@
-// Pauses a message or upload that contains personal information before the chatbot receives it.
+// Pauses a message or upload that contains personal information before the chatbot receives it,
+// and (safety gate) blocks a message Jev judges dangerous before the chatbot receives it.
 // Listeners run in the capture phase on window, so they see Enter, send clicks, file picks, drops
 // and pastes before the page's own handlers. Detection is synchronous, so clean messages are never delayed.
 import { ALWAYS_BLOCKED, findInText, hideDetails, type Finding } from "./detect";
 import { checkFile } from "./files";
-import { showPhotoReminder, showPrivacyPause, type PauseOutcome } from "../ui/privacy";
+import { showPhotoReminder, showPrivacyPause, showSafetyBlock, type PauseOutcome } from "../ui/privacy";
 
 export interface GuardOptions {
   root: ShadowRoot;
   selectors: { composer: string; sendButton: string };
   isStrict: () => Promise<boolean>;
   report: (what: "message" | "file", findings: Finding[], outcome: PauseOutcome) => void;
+  // Safety gate (core/src/safety.ts, answered by the service worker). Optional so the guard works on its own.
+  checkSafety?: (text: string) => Promise<{ block: boolean; categories: string[] }>;
 }
 
 const EDITABLE = '[contenteditable="true"], [contenteditable=""], textarea';
@@ -65,6 +68,47 @@ export function startPrivacyGuard(opts: GuardOptions): void {
   // "Send anyway" approves only the exact text the teen saw on the card. Any edit afterwards is
   // checked again, so the approval can't be reused for a card number typed in its place.
   let approvedText: string | null = null;
+  let checking = false;
+
+  // Last step before the chatbot gets the message: the safety gate. Blocked messages stay in the box, unsent.
+  // If the send button isn't found, the teen's next Enter or click sends it, as long as the text is unchanged.
+  async function release(box: HTMLElement | null, text: string) {
+    if (opts.checkSafety) {
+      checking = true;
+      // An unexpected error must not leave the message stuck in the box with no card: send it.
+      const verdict = await opts.checkSafety(text)
+        .catch((e) => { console.warn(`[Bridge] safety gate error, sending: ${String(e)}`); return { block: false, categories: [] }; })
+        .finally(() => { checking = false; });
+      if (verdict.block) {
+        console.info(`[Bridge] safety gate blocked a message [${verdict.categories}]`);
+        opts.report("message", ["unsafe"], "held");
+        await showSafetyBlock(root, verdict.categories);
+        return box?.focus();
+      }
+    }
+    approvedText = text;
+    sendNow(box);
+  }
+
+  // The send button that belongs to this message box: the one the teen clicked, else the nearest one
+  // around the box. (The page's first "Send…" button can be another control, like "Send feedback".)
+  let clickedSend: HTMLElement | null = null;
+  function sendButtonFor(box: HTMLElement | null): HTMLElement | null {
+    if (clickedSend?.isConnected) return clickedSend;
+    for (let n = box?.parentElement; n; n = n.parentElement) {
+      const b = n.querySelector<HTMLElement>(selectors.sendButton);
+      if (b) return b;
+    }
+    return document.querySelector<HTMLElement>(selectors.sendButton);
+  }
+
+  // Sends the approved message the way the teen did: their send button, or Enter in the box.
+  function sendNow(box: HTMLElement | null) {
+    const button = sendButtonFor(box);
+    clickedSend = null;
+    if (button) return button.click();
+    box?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, bubbles: true, cancelable: true }));
+  }
 
   async function pauseSend(box: HTMLElement | null, findings: Finding[]) {
     const strict = await mustBlock(findings, opts.isStrict);
@@ -82,31 +126,41 @@ export function startPrivacyGuard(opts: GuardOptions): void {
     }
     opts.report("message", findings, outcome);
     if (outcome === "held" || !box) return box?.focus();
-    // If the send button isn't found, the teen's next Enter or click sends it, as long as the text is unchanged.
-    approvedText = textOf(box);
-    document.querySelector<HTMLElement>(selectors.sendButton)?.click();
+    await release(box, textOf(box)); // "send anyway" and "send without these details" still go through the safety gate
   }
 
   function interceptSend(e: Event, box: HTMLElement | null) {
     const text = textOf(box);
     if (approvedText !== null && text === approvedText) { approvedText = null; return; }
     approvedText = null;
+    if (!text) return;
+    // A second Enter while Jev is still checking must not slip the message through.
+    if (checking) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     const findings = findInText(text);
-    if (!findings.length) return;
+    if (!findings.length && !opts.checkSafety) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    console.info(`[Bridge] privacy guard held a message with [${findings}]`);
-    void pauseSend(box, findings);
+    if (findings.length) {
+      console.info(`[Bridge] privacy guard held a message with [${findings}]`);
+      void pauseSend(box, findings);
+    } else {
+      void release(box, text);
+    }
   }
 
   addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
     const box = boxOf(e.target);
-    if (box) interceptSend(e, box);
+    if (!box) return;
+    clickedSend = null;
+    interceptSend(e, box);
   }, true);
 
   addEventListener("click", (e) => {
-    if (e.target instanceof Element && e.target.closest(selectors.sendButton)) interceptSend(e, currentBox());
+    const button = e.target instanceof Element ? e.target.closest<HTMLElement>(selectors.sendButton) : null;
+    if (!button) return;
+    clickedSend = button;
+    interceptSend(e, currentBox());
   }, true);
 
   // ---- uploads: file picker, drag-and-drop, paste ----

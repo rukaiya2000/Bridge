@@ -289,7 +289,7 @@ export interface components {
              */
             what: "message" | "file";
             /** Findings */
-            findings: ("phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document")[];
+            findings: ("phone" | "email" | "ssn" | "card" | "bank" | "address" | "password" | "birthday" | "student_id" | "id_document" | "unsafe")[];
             /** Sent */
             sent: boolean;
             /**

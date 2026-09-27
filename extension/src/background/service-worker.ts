@@ -9,6 +9,7 @@ import { buildPayload, pruneDays } from "../sync/aggregate";
 import NUDGES from "../ui/nudges.json";
 import { redactPersonal, type Finding } from "../privacy/detect";
 import type { PauseOutcome } from "../ui/privacy";
+import { checkSafety } from "../../../core/src/safety";
 
 const PENDING_MS = 60_000;
 const SESSION_IDLE_MS = 10 * 60_000;
@@ -75,7 +76,7 @@ async function showLoginBadge() {
 void showLoginBadge();
 chrome.storage.onChanged.addListener((changes) => { if (changes.auth) void showLoginBadge(); });
 
-chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
+chrome.runtime.onMessage.addListener((msg: ToWorker, sender, sendResponse) => {
   const tabId = sender.tab?.id;
   if (msg.type === "turn") void onTurn(msg.turn, tabId);
   if (msg.type === "dashboard-session") void adoptDashboardSession(msg.token, msg.email);
@@ -83,8 +84,26 @@ chrome.runtime.onMessage.addListener((msg: ToWorker, sender) => {
   if (msg.type === "voice") void locked(() => onVoice(msg.site, msg.active, msg.ts));
   if (msg.type === "sync-now") void syncNow();
   if (msg.type === "privacy-pause") void locked(() => onPrivacyPause(msg.site, msg.what, msg.findings, msg.outcome));
+  // RPC: the content script waits for this answer before the message may reach the chatbot.
+  if (msg.type === "safety-check") {
+    void safetyCheck(msg.site, msg.text).then(sendResponse);
+    return true; // keeps the channel open for the async sendResponse
+  }
   return false;
 });
+
+// ---- safety gate (core/src/safety.ts) ----
+
+// Jev scores the message (personal details removed first); the threshold comes from the Options page.
+async function safetyCheck(site: Site, text: string) {
+  const settings = await store.get("settings");
+  const verdict = await checkSafety(redactPersonal(text), {
+    site, threshold: settings.safetyThreshold, jevKey: settings.safetyGate ? store.JEV_KEY || undefined : undefined,
+  });
+  // Categories and score only, never the text.
+  console.info(`[Bridge] safety gate on ${site}: ${verdict.block ? "BLOCKED" : "allowed"} score=${verdict.score.toFixed(2)} threshold=${verdict.threshold} via ${verdict.source}`, verdict.categories);
+  return verdict;
+}
 
 function send(tabId: number | undefined, msg: ToContent) {
   if (tabId !== undefined) chrome.tabs.sendMessage(tabId, msg).catch(() => {});

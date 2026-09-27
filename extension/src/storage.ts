@@ -1,6 +1,7 @@
 // Typed helpers over chrome.storage.local. No key ever holds message text.
 import type { LabelOptions, Profile, ScoreResult, Site, TurnLabels } from "../../core/src/types";
 import type { DayLog, HourlyTopics, PerDaySite, PrivacyEntry, VoiceEntry } from "./sync/aggregate";
+import { SAFETY_THRESHOLD } from "../../core/src/config";
 
 // OpenRouter key for Jev, copied from the repo's .env by build.mjs. It ships inside dist/, so any
 // build given to someone else gives them the key: fine for local and demo builds only.
@@ -14,6 +15,8 @@ export interface Settings {
   apiUrl: string;        // sync API (api/main.py)
   childId: string;       // which child the parent dashboard shows ("demo" by default), within the account
   privacyStrict: boolean; // true: personal info can't be sent at all (no "send anyway")
+  safetyGate: boolean;    // check each message with Jev before it's sent (core/src/safety.ts)
+  safetyThreshold: number; // block at or above this danger probability (default SAFETY_THRESHOLD)
 }
 
 export interface Store {
@@ -45,6 +48,7 @@ export const DEFAULTS: Store = {
   settings: {
     nudgesEnabled: true, spokenNudges: true,
     apiUrl: "http://localhost:8000", childId: "demo", privacyStrict: false,
+    safetyGate: true, safetyThreshold: SAFETY_THRESHOLD,
   },
   profiles: {},
   state: {},
